@@ -12,7 +12,7 @@ use SoftDeletes;
 
 protected $table = 'categorias';
 protected $primaryKey = 'id';
-
+public $timestamps = true;
 protected $fillable = [
     'nombre'
 ];

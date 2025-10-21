@@ -19,4 +19,28 @@ class ForgotPasswordController extends Controller
     */
 
     use SendsPasswordResetEmails;
+
+    public function __construct()
+    {
+        $this->middleware('guest');
+    }
+
+    /**
+     * Validar el campo de solicitud (usamos 'correo' en vez de 'email').
+     */
+    protected function validateEmail(Request $request)
+    {
+        $request->validate([
+            'correo' => ['required', 'email'],
+        ]);
+    }
+
+    /**
+     * Credenciales que el broker usará para enviar el enlace.
+     * El broker espera la clave 'email', por eso mapeamos desde 'correo'.
+     */
+    protected function credentials(Request $request)
+    {
+        return ['email' => $request->input('correo')];
+    }
 }

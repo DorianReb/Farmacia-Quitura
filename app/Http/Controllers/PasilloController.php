@@ -13,6 +13,8 @@ class PasilloController extends Controller
     public function index()
     {
         //
+        $pasillos = Pasillo::all();
+        return view('pasillo.index', compact('pasillos'));
     }
 
     /**
@@ -21,6 +23,7 @@ class PasilloController extends Controller
     public function create()
     {
         //
+        return view('pasillo.create');
     }
 
     /**
@@ -29,6 +32,15 @@ class PasilloController extends Controller
     public function store(Request $request)
     {
         //
+        $request->validate([
+            'codigo' => 'required|string|min:3|max:50|unique:pasillos,codigo',
+        ]);
+
+        Pasillo::create([
+            'codigo'=>$request->codigo
+        ]);
+
+        return redirect()->route('pasillo.index')->with('success','Pasillo creado correctamente');
     }
 
     /**
@@ -37,14 +49,18 @@ class PasilloController extends Controller
     public function show(Pasillo $pasillo)
     {
         //
+        return view('pasillo.show', compact('pasillo'));
+
     }
 
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Pasillo $pasillo)
+    public function edit($id_pasillo)
     {
         //
+        $pasillo = Pasillo::findOrFail($id_pasillo);
+        return view('pasillo.edit', compact('pasillo'));
     }
 
     /**
@@ -53,13 +69,21 @@ class PasilloController extends Controller
     public function update(Request $request, Pasillo $pasillo)
     {
         //
+        $request->validate([
+            'codigo' => 'required|string|min:3|max:50|unique:pasillos,codigo',
+        ]);
+
+        return redirect()->route('pasillo.index')->with('success','Pasillo actualizado correctamente');
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Pasillo $pasillo)
+    public function destroy($id_pasillo)
     {
         //
+        $pasillo = Pasillo::findOrFail($id_pasillo);
+        $pasillo->delete();
+        return redirect()->route('pasillo.index')->with('success','Pasillo eliminado correctamente');
     }
 }

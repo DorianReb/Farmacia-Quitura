@@ -12,15 +12,22 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
+    protected $table = 'usuarios';
+    protected $primaryKey = 'id';
+    public $timestamps = true;
+
     /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
      */
     protected $fillable = [
-        'name',
-        'email',
-        'password',
+        'nombre',
+        'apellido_paterno',
+        'apellido_materno',
+        'correo',
+        'contrasena',
+        'rol',
     ];
 
     /**
@@ -29,9 +36,19 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $hidden = [
-        'password',
-        'remember_token',
+        'contrasena',
+        //'remember_token',
     ];
+
+    public function getRememberTokenName()
+    {
+        return null;
+    }
+
+    public function getAuthPassword()
+    {
+        return $this->contrasena;
+    }
 
     /**
      * Get the attributes that should be cast.
@@ -41,8 +58,18 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            //'email_verified_at' => 'datetime',
+            'contrasena' => 'hashed',
         ];
+    }
+
+    public function getNombreCompletoAttribute(): string
+    {
+        return trim("{$this->nombre} {$this->apellido_paterno} {$this->apellido_materno}");
+    }
+
+    public function getEmailForPasswordReset()
+    {
+        return $this->correo;
     }
 }

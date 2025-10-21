@@ -6,7 +6,7 @@
 @import "bootstrap/scss/functions";
 
 // Variables
-@import 'variables';
+@import 'bootstrap/scss/variables';
 
 $theme-colors: (
     "primary":    $primary,
@@ -23,12 +23,13 @@ $theme-colors: (
 $custom-colors: (
     "azul-marino": $blue-900,
     "indigo": $indigo-400,
-    "morena": $pink-500
+    "rosa-liverpool": $pink-500
 );
 
 
 // Merge the maps
 $theme-colors: map-merge($theme-colors, $custom-colors);
+
 
 // Bootstrap
 @import 'bootstrap/scss/bootstrap';
