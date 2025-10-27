@@ -16,4 +16,15 @@ class AsignaUbicacion extends Model
         'producto_id',
         'nivel_id'
     ];
+    
+    public function producto()
+    {
+        return $this->belongsTo(Producto::class);
+    }
+
+    public function nivel()
+    {
+        return $this->belongsTo(Nivel::class);
+    }
+
 }

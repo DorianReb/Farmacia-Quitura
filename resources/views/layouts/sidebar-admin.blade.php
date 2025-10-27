@@ -88,8 +88,8 @@
             <ul id="sidebarMenu" class="nav nav-pills flex-column gap-1">
                 {{-- Ventas --}}
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('ventas.*') ? 'active' : '' }}"
-                       href="#">
+                    <a class="nav-link {{ request()->routeIs('venta.*') ? 'active' : '' }}"
+                       href="{{ route('venta.index') }}">
                         <i class="fa-solid fa-dollar-sign"></i>
                         <span>Ventas</span>
                     </a>
@@ -112,17 +112,17 @@
                     <div id="menuInventario" class="collapse ms-2" data-bs-parent="#sidebarMenu">
                         <ul class="nav flex-column mt-1">
                             <li class="nav-item">
-                                <a class="nav-link" href="#">
+                                <a class="nav-link" href="{{ route('producto.index') }}">>
                                     <i class="fa-solid fa-pills"></i><span class="ms-2">Productos</span>
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="#">
+                                <a class="nav-link" href="{{ route('lote.index') }}">
                                     <i class="fa-solid fa-box"></i><span class="ms-2">Lotes</span>
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="#">
+                                <a class="nav-link" href="{{ route('ubicacion.index') }}">
                                     <i class="fa-solid fa-location-dot"></i><span class="ms-2">Ubicaciones</span>
                                 </a>
                             </li>
@@ -133,7 +133,7 @@
                 {{-- Promociones --}}
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('promociones.*') ? 'active' : '' }}"
-                       href="#">
+                       href="{{ route('promocion.index') }}">
                         <i class="fa-solid fa-tag"></i>
                         <span>Promociones</span>
                     </a>

@@ -3,6 +3,11 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PresentacionController;
 use App\Http\Controllers\MarcaController;
+use App\Http\Controllers\VentaController;
+use App\Http\Controllers\ProductoController;
+use App\Http\Controllers\LoteController;
+use App\Http\Controllers\AsignaUbicacionController;
+use App\Http\Controllers\PromocionController;
 
 Route::get('/', function () {
     return view('auth.login');
@@ -44,4 +49,16 @@ Route::prefix('marcas')->name('marca.')->group(function () {
     Route::patch ('{id}/restaurar',          [MarcaController::class, 'restaurar'])->name('restaurar');
     Route::delete('{id}/forzar-eliminacion', [MarcaController::class, 'forzarEliminacion'])->name('forzar-eliminacion');
 });
+
+Route::get('/venta', [VentaController::class, 'index'])->name('venta.index');
+Route::get('/venta/buscarProducto/{codigo}', [VentaController::class, 'buscarProductoPorCodigo']);
+Route::post('/venta/store', [VentaController::class, 'store'])->name('venta.store');
+
+Route::resource('producto', ProductoController::class);
+
+Route::resource('lote', App\Http\Controllers\LoteController::class);
+
+Route::resource('ubicacion', AsignaUbicacionController::class);
+
+Route::resource('promocion', PromocionController::class);
 

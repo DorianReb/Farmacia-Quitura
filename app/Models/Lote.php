@@ -21,4 +21,12 @@ class Lote extends Model
         'fecha_entrada',
         'usuario_id'
     ];
+    
+    public function producto() {
+    return $this->belongsTo(Producto::class, 'producto_id');
+    }
+
+    public function usuario() {
+        return $this->belongsTo(User::class, 'usuario_id');
+    }
 }

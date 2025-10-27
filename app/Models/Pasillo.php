@@ -13,4 +13,10 @@ class Pasillo extends Model
     protected $primaryKey='id';
     public $timestamps=true;
     protected $fillable=['codigo'];
+
+    public function getNombreAttribute()
+    {
+        return $this->codigo;
+    }
+
 }

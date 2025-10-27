@@ -20,4 +20,8 @@ class Promocion extends Model
         'autorizada_por'
     ];
 
+    public function usuario()
+    {
+        return $this->belongsTo(User::class, 'autorizada_por', 'id');
+    }
 }

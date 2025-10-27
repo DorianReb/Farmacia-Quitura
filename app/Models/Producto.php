@@ -29,4 +29,29 @@ class Producto extends Model
         'imagen',
         'alt_imagen'
     ];
+    public function marca()
+    {
+        return $this->belongsTo(Marca::class);
+    }
+
+    public function formaFarmaceutica()
+    {
+        return $this->belongsTo(FormaFarmaceutica::class);
+    }
+
+    public function presentacion()
+    {
+        return $this->belongsTo(Presentacion::class);
+    }
+
+    public function unidadMedida()
+    {
+        return $this->belongsTo(UnidadMedida::class);
+    }
+
+    public function categoria()
+    {
+        return $this->belongsTo(Categoria::class);
+    }
+
 }
