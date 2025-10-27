@@ -50,18 +50,22 @@
                         @error('apellido_paterno') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
-                    {{-- Apellido materno (opcional) --}}
+                    {{-- Apellido materno --}}
                     <div class="mb-3">
-                        <label for="reg_apellido_materno" class="form-label fw-semibold">Apellido materno (opcional)</label>
+                        <label for="reg_apellido_materno" class="form-label fw-semibold">*Apellido materno</label>
                         <input
                             id="reg_apellido_materno"
                             type="text"
                             name="apellido_materno"
                             class="form-control @error('apellido_materno') is-invalid @enderror"
                             value="{{ old('apellido_materno') }}"
+                            required
                         >
-                        @error('apellido_materno') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        @error('apellido_materno')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
+
 
                     {{-- Correo --}}
                     <div class="mb-3">

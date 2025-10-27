@@ -35,12 +35,12 @@
                     <i class="fa-solid fa-plus"></i>
                 </button>
 
-                {{-- Botón para ver eliminados --}}
+                {{-- Botón para ver eliminados --
                 <a href="{{ route('presentacion.eliminados') }}"
                    class="btn btn-warning btn-icon shadow-sm ms-2"
                    title="Ver eliminadas">
                     <i class="fa-solid fa-trash-can"></i>
-                </a>
+                </a>--}}
             </div>
 
             <form method="GET" action="{{ route('presentacion.index') }}" class="d-inline-block" style="min-width:300px;max-width:480px;width:100%;">

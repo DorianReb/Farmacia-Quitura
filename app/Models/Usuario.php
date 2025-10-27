@@ -27,7 +27,8 @@ class User extends Authenticatable
         'apellido_materno',
         'correo',
         'contrasena',
-        'rol', // 'Administrador' | 'Vendedor'
+        'rol',
+        'estado',// 'Administrador' | 'Vendedor'
     ];
 
     // Campos ocultos (no se devuelven en JSON)

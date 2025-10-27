@@ -1,4 +1,4 @@
-@extends('layouts.sidebar-admin')
+    @extends('layouts.sidebar-admin')
 
 @section('content')
 <div class="container-xxl">

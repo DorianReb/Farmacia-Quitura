@@ -51,10 +51,11 @@ class RegisterController extends Controller
         return Validator::make($data, [
             'nombre'            => ['required', 'string', 'max:100'],
             'apellido_paterno'  => ['required', 'string', 'max:100'],
-            'apellido_materno'  => ['nullable', 'string', 'max:100'],
+            'apellido_materno'  => ['required', 'string', 'max:100'],
             'correo'            => ['required', 'string', 'email', 'max:255', 'unique:usuarios,correo'],
             'contrasena'        => ['required', 'string', 'min:8', 'confirmed'], // requiere contrasena_confirmation
             'rol'               => ['required', 'in:Administrador,Vendedor'],
+            'estado'            => ['in:Activo,Inactivo,Pendiente'],
         ]);
     }
 
@@ -73,6 +74,13 @@ class RegisterController extends Controller
             'correo'            => $data['correo'],
             'contrasena'        => Hash::make($data['contrasena']),
             'rol'               => $data['rol'],
+            'estado'            => 'Pendiente',
         ]);
+    }
+
+    protected function registered($request, $user)
+    {
+        \Auth::logout(); // importante: no mantener sesión
+        return redirect()->route('estado.pendiente');
     }
 }

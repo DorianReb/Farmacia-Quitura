@@ -5,35 +5,15 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 
 class LoginController extends Controller
 {
-    /*
-    |--------------------------------------------------------------------------
-    | Login Controller
-    |--------------------------------------------------------------------------
-    |
-    | This controller handles authenticating users for the application and
-    | redirecting them to your home screen. The controller uses a trait
-    | to conveniently provide its functionality to your applications.
-    |
-    */
-
     use AuthenticatesUsers;
 
-    /**
-     * Where to redirect users after login.
-     *
-     * @var string
-     */
     protected $redirectTo = '/home';
 
-    /**
-     * Create a new controller instance.
-     *
-     * @return void
-     */
     public function __construct()
     {
         $this->middleware('guest')->except('logout');
@@ -45,9 +25,6 @@ class LoginController extends Controller
         return 'correo';
     }
 
-    /**
-     * Validación de los campos del login.
-     */
     protected function validateLogin(Request $request)
     {
         $request->validate([
@@ -56,11 +33,6 @@ class LoginController extends Controller
         ]);
     }
 
-    /**
-     * Mapear las credenciales para Auth::attempt().
-     * OJO: la clave debe llamarse 'password' aunque tu columna sea 'contrasena';
-     * tu modelo User ya expone getAuthPassword() que devuelve 'contrasena'.
-     */
     protected function credentials(Request $request)
     {
         return [
@@ -70,25 +42,51 @@ class LoginController extends Controller
     }
 
     /**
-     * (Opcional) Redirección dinámica según rol.
-     * Si usas esto, puedes quitar la propiedad $redirectTo.
+     * IMPORTANTE: aquí SOLO devolvemos un string (ruta/URL), NADA de logout/redirect.
      */
     protected function redirectTo()
     {
-        $user = auth()->user();
-        if ($user && $user->rol === 'Administrador') {
-            return route('home');          // ajusta a tu ruta real
+        $u = auth()->user();
+
+        if ($u && $u->rol === 'Vendedor') {
+            // Usa una ruta que EXISTE; si no tienes vendedor.home, manda a /home
+            return Route::has('vendedor.home') ? route('vendedor.home') : route('home');
         }
-        return route('vendedor.dashboard');       // ajusta a tu ruta real
+
+        // Superadmin y Administrador al mismo home por ahora
+        return route('home');
     }
 
-    /**
-     * (Opcional) Mensaje de error usando 'correo' en vez de 'email'.
-     */
     protected function sendFailedLoginResponse(Request $request)
     {
         return back()
             ->withInput($request->only('correo', 'remember'))
             ->withErrors(['correo' => __('auth.failed')]);
+    }
+
+    /**
+     * Aquí sí podemos hacer logout/redirect según ESTADO.
+     */
+    protected function authenticated(Request $request, $user)
+    {
+        \Log::info('LOGIN OK', [
+            'id'      => $user->id,
+            'correo'  => $user->correo,
+            'rol'     => $user->rol,
+            'estado'  => $user->estado,
+            'session' => session()->getId(),
+        ]);
+
+        if ($user->estado === 'Pendiente') {
+            Auth::logout();
+            return redirect()->route('estado.pendiente');
+        }
+        if ($user->estado === 'Rechazado') {
+            Auth::logout();
+            return redirect()->route('estado.rechazado');
+        }
+
+        // Redirección final SIN usar RedirectResponse en redirectTo()
+        return redirect($this->redirectPath());
     }
 }

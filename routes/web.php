@@ -8,6 +8,8 @@ use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\LoteController;
 use App\Http\Controllers\AsignaUbicacionController;
 use App\Http\Controllers\PromocionController;
+use App\Http\Controllers\UsuarioController;
+use App\Http\Controllers\SolicitudController;
 
 Route::get('/', function () {
     return view('auth.login');
@@ -15,50 +17,78 @@ Route::get('/', function () {
 
 Auth::routes();
 
+/*
+|--------------------------------------------------------------------------
+| ESTADOS / HOME (públicas)
+|--------------------------------------------------------------------------
+*/
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+Route::view('/cuenta/pendiente', 'estado.pendiente')->name('estado.pendiente');
+Route::view('/cuenta/rechazada', 'estado.rechazado')->name('estado.rechazado');
 
+/*
+|--------------------------------------------------------------------------
+| SUPERADMIN (solo Superadmin)  --> mantiene nombres: superadmin.usuarios.*, superadmin.solicitudes.*
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'estado', 'role:Superadmin'])
+    ->prefix('superadmin')->name('superadmin.')->group(function () {
 
-    // Vista unificada
-    Route::prefix('catalogos')->name('catalogos.')->group(function () {
-        Route::get('/', [CatalogosController::class, 'index'])->name('index');
+        // Usuarios (resource mantiene los mismos nombres superadmin.usuarios.*)
+        Route::resource('usuarios', UsuarioController::class);
 
-        // Secciones (cargan el HTML de tus parciales)
-        Route::get('/section/{section}', [CatalogosController::class, 'section'])
-            ->whereIn('section', [
-                'marcas','formas','presentaciones','unidades','categorias','nombres-cientificos'
-            ])->name('section');
+        // Solicitudes (mismos nombres)
+        Route::get('solicitudes', [SolicitudController::class, 'index'])->name('solicitudes.index');
+        Route::patch('solicitudes/{id}/aprobar', [SolicitudController::class, 'aprobar'])->name('solicitudes.aprobar');
+        Route::patch('solicitudes/{id}/rechazar', [SolicitudController::class, 'rechazar'])->name('solicitudes.rechazar');
+        Route::delete('solicitudes/{id}', [SolicitudController::class, 'destroy'])->name('solicitudes.destroy');
     });
 
-    // Formularios create/edit/destroy de cada catálogo (viven en archivos aparte)
-    Route::resource('categoria',\App\Http\Controllers\CategoriaController::class);
-    Route::resource('marca',\App\Http\Controllers\MarcaController::class);
-    Route::resource('presentacion',\App\Http\Controllers\PresentacionController::class);
-    Route::resource('formaFarmaceutica',\App\Http\Controllers\FormaFarmaceuticaController::class);
-    Route::resource('unidad_medida',\App\Http\Controllers\UnidadMedidaController::class);
-    Route::resource('nombreCientifico',\App\Http\Controllers\NombreCientificoController::class);
+/*
+|--------------------------------------------------------------------------
+| ADMINISTRACIÓN (Admin y Superadmin)  --> mantiene TODOS los nombres originales
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'estado', 'role:Administrador,Superadmin'])->group(function () {
 
-    //SofDeletes
-// Presentaciones
-Route::get   ('/presentaciones/eliminados', [PresentacionController::class,'eliminados'])->name('presentacion.eliminados');
-Route::patch ('/presentaciones/{id}/restaurar', [PresentacionController::class,'restaurar'])->name('presentacion.restaurar');
-Route::delete('/presentaciones/{id}/forzar-eliminacion', [PresentacionController::class,'forzarEliminacion'])->name('presentacion.forzar-eliminacion');
+    // Formularios create/edit/destroy de cada catálogo (nombres iguales)
+    Route::resource('categoria', \App\Http\Controllers\CategoriaController::class);
+    Route::resource('marca', \App\Http\Controllers\MarcaController::class);
+    Route::resource('presentacion', \App\Http\Controllers\PresentacionController::class);
+    Route::resource('formaFarmaceutica', \App\Http\Controllers\FormaFarmaceuticaController::class);
+    Route::resource('unidad_medida', \App\Http\Controllers\UnidadMedidaController::class);
+    Route::resource('nombreCientifico', \App\Http\Controllers\NombreCientificoController::class);
 
-// Soft deletes de Marcas
-Route::prefix('marcas')->name('marca.')->group(function () {
-    Route::get   ('eliminados',              [MarcaController::class, 'eliminados'])->name('eliminados');
-    Route::patch ('{id}/restaurar',          [MarcaController::class, 'restaurar'])->name('restaurar');
-    Route::delete('{id}/forzar-eliminacion', [MarcaController::class, 'forzarEliminacion'])->name('forzar-eliminacion');
+    // SoftDeletes Presentaciones (mismos nombres)
+    Route::get('/presentaciones/eliminados', [PresentacionController::class, 'eliminados'])->name('presentacion.eliminados');
+    Route::patch('/presentaciones/{id}/restaurar', [PresentacionController::class, 'restaurar'])->name('presentacion.restaurar');
+    Route::delete('/presentaciones/{id}/forzar-eliminacion', [PresentacionController::class, 'forzarEliminacion'])->name('presentacion.forzar-eliminacion');
+
+    // SoftDeletes Marcas (mismos nombres y prefix 'marcas' ya existente)
+    Route::prefix('marcas')->name('marca.')->group(function () {
+        Route::get('eliminados', [MarcaController::class, 'eliminados'])->name('eliminados');
+        Route::patch('{id}/restaurar', [MarcaController::class, 'restaurar'])->name('restaurar');
+        Route::delete('{id}/forzar-eliminacion', [MarcaController::class, 'forzarEliminacion'])->name('forzar-eliminacion');
+    });
+
+    // Inventario / Gestión (mismos nombres)
+    Route::resource('producto', ProductoController::class);
+    Route::resource('lote', App\Http\Controllers\LoteController::class);
+    Route::resource('ubicacion', AsignaUbicacionController::class);
+    Route::resource('promocion', PromocionController::class);
 });
 
-Route::get('/venta', [VentaController::class, 'index'])->name('venta.index');
-Route::get('/venta/buscarProducto/{codigo}', [VentaController::class, 'buscarProductoPorCodigo']);
-Route::post('/venta/store', [VentaController::class, 'store'])->name('venta.store');
+/*
+|--------------------------------------------------------------------------
+| VENTAS (Vendedor, Admin y Superadmin)  --> mantiene nombres: venta.index / venta.store
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'estado', 'role:Vendedor,Administrador,Superadmin'])->group(function () {
+    Route::get('/venta', [VentaController::class, 'index'])->name('venta.index');
+    Route::get('/venta/buscarProducto/{codigo}', [VentaController::class, 'buscarProductoPorCodigo']);
+    Route::post('/venta/store', [VentaController::class, 'store'])->name('venta.store');
+    Route::get('/venta/historial', [VentaController::class, 'historial'])->name('venta.historial');
 
-Route::resource('producto', ProductoController::class);
-
-Route::resource('lote', App\Http\Controllers\LoteController::class);
-
-Route::resource('ubicacion', AsignaUbicacionController::class);
-
-Route::resource('promocion', PromocionController::class);
-
+    // Ruta temporal de dashboard vendedor (nombre intacto)
+    Route::view('/dashboard/vendedor', 'vendedor.dashboard')->name('vendedor.dashboard');
+});

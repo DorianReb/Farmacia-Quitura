@@ -17,4 +17,14 @@ class Venta extends Model
       'fecha',
       'total'
     ];
+
+    public function usuario()
+    {
+        return $this->belongsTo(User::class, 'usuario_id');
+    }
+
+    public function detalles()
+    {
+        return $this->hasMany(DetalleVenta::class, 'venta_id');
+    }
 }

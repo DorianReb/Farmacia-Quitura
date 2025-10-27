@@ -18,4 +18,13 @@ class DetalleVenta extends Model
         'cantidad',
         'subtotal'
     ];
+
+    public function venta()
+    {
+        return $this->belongsTo(Venta::class, 'venta_id');
+    }
+    public function lote()
+    {
+        return $this->belongsTo(Lote::class, 'lote_id');
+    }
 }

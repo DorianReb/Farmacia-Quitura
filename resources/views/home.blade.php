@@ -52,7 +52,7 @@
                 <div class="icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
                 <div>
                     <div class="small opacity-90">Próximas a caducar (30 días)</div>
-                    <div class="h4 m-0 fw-bold">{{ $kpis['por_caducar_30d'] ?? 0 }}</div>
+                    <div class="h4 m-0 fw-bold">{{ $kpis['por_caducar_30d'] ?? 0 }} uds.</div>
                 </div>
             </div>
         </div>
@@ -72,7 +72,7 @@
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="section-title m-0">PRÓXIMOS 5 PRODUCTOS A CADUCAR</h6>
-                <a href="#" class="btn btn-primary btn-sm">
+                <a href={{route("producto.index")}} class="btn btn-primary btn-sm">
                     Ver todos los productos
                 </a>
             </div>
@@ -99,13 +99,13 @@
                             <td>{{ $item->dias_restantes }} días</td>
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm" role="group">
-                                    <a href="{{ route('inventarios.show', $item->id) }}" class="btn btn-outline-secondary" title="Ver">
+                                    <a href="{{ route('lote.index', $item->id) }}" class="btn btn-outline-secondary" title="Ver">
                                         <i class="fa-regular fa-eye"></i>
                                     </a>
-                                    <a href="{{ route('inventarios.edit', $item->id) }}" class="btn btn-outline-secondary" title="Editar">
+                                    <a href="{{ route('lote.edit', $item->id) }}" class="btn btn-outline-secondary" title="Editar">
                                         <i class="fa-regular fa-pen-to-square"></i>
                                     </a>
-                                    <a href="{{ route('ventas.rapida', ['producto' => $item->producto_id ?? null]) }}" class="btn btn-outline-secondary" title="Venta rápida">
+                                    <a href="{{ route('venta.index', ['producto' => $item->producto_id ?? null]) }}" class="btn btn-outline-secondary" title="Venta rápida">
                                         <i class="fa-solid fa-bolt"></i>
                                     </a>
                                 </div>

@@ -35,7 +35,7 @@
                     title="Agregar nuevo">
                 <i class="fa-solid fa-plus"></i>
             </button>
-            
+
 
             {{-- Buscador (derecha) --}}
             <form method="GET" action="{{ route('marca.index') }}" class="d-inline-block" style="min-width:300px;max-width:480px;width:100%;">
@@ -69,7 +69,7 @@
         <div class="card card-soft">
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle m-0">
+                    <table class="table table-hover table-striped- align-middle m-0">
                         <thead class="bg-azul-marino text-white">
                         <tr>
                             <th>Nombre</th>

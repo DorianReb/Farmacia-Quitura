@@ -8,6 +8,7 @@ use App\Models\Producto;
 use App\Models\Lote;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class VentaController extends Controller
 {
@@ -128,6 +129,106 @@ class VentaController extends Controller
             'message' => 'Venta registrada correctamente',
             'venta_id' => $venta->id
         ]);
+    }
+
+
+    public function historial(Request $request)
+    {
+        $q     = trim($request->input('q',''));
+        $desde = $request->input('desde');
+        $hasta = $request->input('hasta');
+
+        $ventas = Venta::with([
+            'usuario',
+            'detalles.lote.producto', // producto via lote
+        ])
+            ->when($desde, fn($qq)=>$qq->whereDate('fecha','>=',$desde))
+            ->when($hasta, fn($qq)=>$qq->whereDate('fecha','<=',$hasta))
+            ->when($q !== '', function($qq) use ($q){
+                $qq->where('id',$q)
+                    ->orWhereHas('usuario', function($u) use ($q){
+                        $u->where('nombre','like',"%$q%")
+                            ->orWhere('apellido_paterno','like',"%$q%")
+                            ->orWhere('apellido_materno','like',"%$q%");
+                    });
+            })
+            ->orderByDesc('fecha')
+            ->paginate(20)
+            ->appends(compact('q','desde','hasta'));
+
+        // 🔧 IMPORTANTE: trabajar con la colección interna del paginator
+        $collection = $ventas->getCollection();
+
+        // (Opcional) buscar descuentos/promos por lote
+        $loteIds = $collection
+            ->flatMap(fn($venta) => $venta->detalles->pluck('lote_id'))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $promos = collect();
+        if (!empty($loteIds)) {
+            $promos = DB::table('asigna_promociones')
+                ->join('promociones','promociones.id','=','asigna_promociones.promocion_id')
+                ->whereIn('asigna_promociones.lote_id', $loteIds)
+                ->whereDate('promociones.fecha_inicio','<=', now())
+                ->whereDate('promociones.fecha_fin','>=', now())
+                ->select('asigna_promociones.lote_id','promociones.porcentaje')
+                ->get()
+                ->groupBy('lote_id')
+                ->map(fn($rows)=>(float)$rows->max('porcentaje'));
+        }
+
+        // Enriquecer detalles para la vista/row-details del DataTable
+        foreach ($collection as $venta) {
+            foreach ($venta->detalles as $d) {
+                $lote = $d->lote;
+                $prod = $lote?->producto;
+
+                $d->producto_nombre = $prod->nombre ?? '—';
+                $d->lote_codigo     = $lote->numero ?? $lote->codigo ?? $lote->lote ?? null;
+                $d->precio_unitario = (float)($lote->precio_venta ?? 0);
+                $d->descuento       = (float)($promos[$lote->id] ?? 0); // %
+            }
+        }
+
+        // Volver a colocar la colección enriquecida dentro del paginator (opcional)
+        $ventas->setCollection($collection);
+
+        return view('venta.historial', compact('ventas','q','desde','hasta'));
+    }
+
+    /**
+     * Display the specified resource.
+     */
+    public function show(Venta $venta)
+    {
+        //
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(Venta $venta)
+    {
+        //
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, Venta $venta)
+    {
+        //
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Venta $venta)
+    {
+        //
     }
 
 }

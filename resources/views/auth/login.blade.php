@@ -68,7 +68,7 @@
                             type="password"
                             name="contrasena"
                             class="form-control @error('contrasena') is-invalid @enderror"
-                            placeholder="Password"
+                            placeholder="Contraseña"
                             required
                             autocomplete="current-password"
                         >
@@ -145,10 +145,10 @@
 
                     {{-- Apellido materno (opcional) --}}
                     <div class="mb-3">
-                        <label for="reg_apellido_materno" class="form-label fw-semibold">Apellido materno (opcional)</label>
+                        <label for="reg_apellido_materno" class="form-label fw-semibold">*Apellido materno</label>
                         <input id="reg_apellido_materno" type="text" name="apellido_materno"
                                class="form-control @error('apellido_materno') is-invalid @enderror"
-                               value="{{ old('apellido_materno') }}">
+                               value="{{ old('apellido_materno') }}" required>
                         @error('apellido_materno') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
