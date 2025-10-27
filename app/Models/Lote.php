@@ -29,4 +29,10 @@ class Lote extends Model
     public function usuario() {
         return $this->belongsTo(User::class, 'usuario_id');
     }
+    
+    public function lotes()
+    {
+        return $this->hasMany(Lote::class, 'producto_id');
+    }
+
 }

@@ -111,4 +111,10 @@ class ProductoController extends Controller
         $producto->delete();
         return redirect()->route('productos.index')->with('success', 'Producto eliminado correctamente');
     }
+
+    public function lotes()
+    {
+        return $this->hasMany(Lote::class, 'producto_id');
+    }
+
 }

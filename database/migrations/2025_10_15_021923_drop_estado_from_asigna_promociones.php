@@ -9,12 +9,11 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
+    public function up()
     {
-        Schema::table('asigna_promociones', function (Blueprint $table) {
-            // Si tu columna se llama exactamente 'estado' y es ENUM:
-            $table->dropColumn('estado');
-        });
+        // Schema::table('asigna_promociones', function (Blueprint $table) {
+        //     $table->dropColumn('estado');
+        // });
     }
 
     /**

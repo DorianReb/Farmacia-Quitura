@@ -20,4 +20,14 @@ class AsignaComponente extends Model
         'base_cantidad',
         'base_unidad_id',
     ];
+
+    public function asignaComponentes()
+    {
+        return $this->hasMany(AsignaComponente::class, 'producto_id');
+    }
+
+    public function nombreCientifico()
+    {
+        return $this->belongsTo(NombreCientifico::class, 'nombre_cientifico_id');
+    }
 }

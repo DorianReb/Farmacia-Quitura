@@ -54,4 +54,18 @@ class Producto extends Model
         return $this->belongsTo(Categoria::class);
     }
 
+    public function lotes()
+    {
+        return $this->hasMany(Lote::class, 'producto_id');
+    }
+    
+    public function asignaComponentes()
+    {
+        return $this->hasMany(AsignaComponente::class, 'producto_id');
+    }
+
+    public function asignaUbicaciones()
+    {
+        return $this->hasMany(AsignaUbicacion::class, 'producto_id');
+    }
 }

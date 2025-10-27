@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Venta;
+use App\Models\DetalleVenta;
+use App\Models\Producto;
+use App\Models\Lote;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -15,40 +18,63 @@ class VentaController extends Controller
         $totalVenta = 0;
 
         if ($request->q) {
-            $productoEncontrado = Producto::with(['lotes'])
+            $productoEncontrado = Producto::with(['lotes', 'marca', 'formaFarmaceutica', 'presentacion', 'categoria'])
                 ->where('codigo_barras', $request->q)
                 ->first();
 
             if ($productoEncontrado) {
                 $productoEncontrado->existencias_calculadas = $productoEncontrado->lotes->sum('cantidad');
+
+                // Asignar información de lote FEFO si existe
+                $productoEncontrado->lotes = $productoEncontrado->lotes->sortBy('fecha_caducidad')->values();
             }
         }
 
-        return view('venta.index', compact('productoEncontrado','itemsEnVenta','totalVenta'));
+        return view('venta.index', compact('productoEncontrado', 'itemsEnVenta', 'totalVenta'));
     }
 
     public function buscarProductoPorCodigo($codigo)
     {
-        $producto = Producto::with(['lotes'])
-            ->where('codigo_barras', $codigo)
-            ->first();
+        $producto = Producto::with([
+            'lotes',
+            'marca',
+            'presentacion',
+            'formaFarmaceutica',
+            'categoria',
+            'asignaUbicaciones.nivel.pasillo',
+            'asignaComponentes.nombreCientifico'
+        ])
+        ->where('codigo_barras', $codigo)
+        ->first();
 
-        if(!$producto){
-            return response()->json(['message'=>'Producto no encontrado'], 404);
+        if (!$producto) {
+            return response()->json(['message' => 'Producto no encontrado'], 404);
         }
 
+        // Calcular existencias
         $producto->existencias_calculadas = $producto->lotes->sum('cantidad');
+
+        // Ordenar lotes por fecha de caducidad (FEFO)
+        $producto->lotes = $producto->lotes->sortBy('fecha_caducidad')->values();
+
+        // Asegurar estructura del JSON
+        $producto->asigna_ubicaciones = $producto->asignaUbicaciones ?? collect();
+        $producto->asigna_componentes = $producto->asignaComponentes ?? collect();
+        $producto->forma_farmaceutica = $producto->formaFarmaceutica ?? null;
+        //Extraer nombre científico desde la primera asignación si existe
+        $primerComponente = $producto->asigna_componentes->first();
+        $producto->nombre_cientifico = $primerComponente?->nombreCientifico?->nombre ?? null;
+
+        //  Extraer ubicación (pasillo/nivel)
+        $primeraUbicacion = $producto->asigna_ubicaciones->first();
+        $nivel = $primeraUbicacion?->nivel?->nombre;
+        $pasillo = $primeraUbicacion?->nivel?->pasillo?->nombre;
+        $producto->ubicacion_texto = $nivel && $pasillo ? "{$pasillo} / {$nivel}" : ($nivel ?? $pasillo ?? null);
+
         return response()->json($producto);
     }
 
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
 
     /**
      * Store a newly created resource in storage.
@@ -59,7 +85,7 @@ class VentaController extends Controller
             'productos' => 'required|array|min:1',
             'productos.*.codigo_barras' => 'required|string',
             'productos.*.cantidad' => 'required|integer|min:1',
-            'productos.*.lote' => 'required'
+            'productos.*.lote' => 'required|integer'
         ]);
 
         $venta = Venta::create([
@@ -70,9 +96,15 @@ class VentaController extends Controller
 
         $total = 0;
 
-        foreach($request->productos as $p){
+        foreach ($request->productos as $p) {
             $lote = Lote::find($p['lote']);
-            $subtotal = $p['cantidad'] * $lote->precio_venta;
+            if (!$lote) continue;
+
+            // Obtener producto relacionado
+            $producto = $lote->producto;
+
+            // Calcular subtotal usando precio de venta del producto
+            $subtotal = $p['cantidad'] * $producto->precio_venta;
 
             DetalleVenta::create([
                 'venta_id' => $venta->id,
@@ -82,43 +114,20 @@ class VentaController extends Controller
             ]);
 
             $total += $subtotal;
+
+            // Reducir stock del lote
+            $lote->cantidad -= $p['cantidad'];
+            $lote->save();
         }
 
+        // Guardar total de la venta
         $venta->total = $total;
         $venta->save();
 
-        return response()->json(['message'=>'Venta registrada correctamente']);
+        return response()->json([
+            'message' => 'Venta registrada correctamente',
+            'venta_id' => $venta->id
+        ]);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Venta $venta)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Venta $venta)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Venta $venta)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Venta $venta)
-    {
-        //
-    }
 }
