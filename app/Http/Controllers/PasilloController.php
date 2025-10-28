@@ -7,6 +7,19 @@ use Illuminate\Http\Request;
 
 class PasilloController extends Controller
 {
+    public function index(Request $request)
+    {
+        $query = Pasillo::query();
+
+        if ($request->q) {
+            $query->where('codigo', 'like', "%{$request->q}%");
+        }
+
+        $pasillos = $query->orderBy('codigo')->paginate(10);
+
+        return view('pasillo.index', compact('pasillos'));
+    }
+
     public function store(Request $request)
     {
         $request->validate([

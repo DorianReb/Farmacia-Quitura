@@ -7,6 +7,20 @@ use Illuminate\Http\Request;
 
 class NivelController extends Controller
 {
+    public function index(Request $request)
+    {
+        $query = Nivel::with('pasillo'); // si quieres mostrar pasillo relacionado
+
+        if ($request->q) {
+            $query->where('numero', 'like', "%{$request->q}%")
+                  ->orWhereHas('pasillo', fn($q) => $q->where('codigo', 'like', "%{$request->q}%"));
+        }
+
+        $niveles = $query->orderBy('numero')->paginate(10); // paginación de 10 por página
+
+        return view('nivel.index', compact('niveles'));
+    }
+
     public function store(Request $request)
     {
         $request->validate([
@@ -14,7 +28,6 @@ class NivelController extends Controller
             'numero' => 'required|integer|min:1',
         ]);
 
-        // Buscar si ya existe un nivel eliminado con el mismo pasillo y número
         $nivelEliminado = Nivel::withTrashed()
             ->where('pasillo_id', $request->pasillo_id)
             ->where('numero', $request->numero)
@@ -25,11 +38,7 @@ class NivelController extends Controller
             return redirect()->route('ubicacion.index')->with('success', 'Nivel restaurado correctamente.');
         }
 
-        // Si no existe, crear uno nuevo
-        Nivel::create([
-            'pasillo_id' => $request->pasillo_id,
-            'numero' => $request->numero,
-        ]);
+        Nivel::create($request->only('pasillo_id','numero'));
 
         return redirect()->route('ubicacion.index')->with('success', 'Nivel creado correctamente.');
     }
@@ -41,7 +50,6 @@ class NivelController extends Controller
             'numero' => 'required|integer|min:1',
         ]);
 
-        // Validar duplicados (ignorando el registro actual)
         $duplicado = Nivel::withTrashed()
             ->where('pasillo_id', $request->pasillo_id)
             ->where('numero', $request->numero)
@@ -52,10 +60,7 @@ class NivelController extends Controller
             return redirect()->back()->withErrors(['numero' => 'Este nivel ya existe para este pasillo.']);
         }
 
-        $nivel->update([
-            'pasillo_id' => $request->pasillo_id,
-            'numero' => $request->numero,
-        ]);
+        $nivel->update($request->only('pasillo_id','numero'));
 
         return redirect()->route('ubicacion.index')->with('success', 'Nivel actualizado correctamente.');
     }

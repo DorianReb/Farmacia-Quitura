@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Promocion;
 use Illuminate\Http\Request;
+use App\Models\Producto; 
+use App\Models\AsignaPromocion;
 
 class PromocionController extends Controller
 {
@@ -12,6 +14,7 @@ class PromocionController extends Controller
      */
     public function index(Request $request)
     {
+        // Promociones con búsqueda y paginación
         $query = Promocion::query();
 
         if ($request->q) {
@@ -21,13 +24,17 @@ class PromocionController extends Controller
         }
 
         $promociones = $query->orderBy('fecha_inicio', 'desc')->paginate(10);
-
-        // Aquí agregamos todos los usuarios para los select de "autorizada por"
         $usuarios = \App\Models\User::all();
 
-        return view('promocion.index', compact('promociones', 'usuarios'));
-    }
+        // Asignaciones con relaciones cargadas
+        $asignaciones = AsignaPromocion::with(['promocion', 'lote.producto'])->paginate(10);
 
+        // Lotes con su producto para selects
+        $lotes = \App\Models\Lote::with('producto')->get();
+        $promociones_all = Promocion::all();
+
+        return view('promocion.index', compact('promociones', 'usuarios', 'asignaciones', 'lotes', 'promociones_all'));
+    }
 
     /**
      * Store a newly created resource in storage.

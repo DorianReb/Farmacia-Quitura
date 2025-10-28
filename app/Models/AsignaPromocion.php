@@ -2,6 +2,11 @@
 
 namespace App\Models;
 
+
+use App\Models\AsignaPromocion;
+use App\Models\Promocion;
+use App\Models\Lote;
+use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -16,4 +21,16 @@ class AsignaPromocion extends Model
         'promocion_id',
         'lote_id',
     ];
+
+    // Relación con la promoción
+    public function promocion()
+    {
+        return $this->belongsTo(Promocion::class, 'promocion_id', 'id')->withTrashed();
+    }
+
+    // Relación con el lote/producto
+    public function lote()
+    {
+        return $this->belongsTo(Lote::class, 'lote_id', 'id')->withTrashed();
+    }
 }

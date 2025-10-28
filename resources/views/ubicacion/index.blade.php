@@ -59,7 +59,7 @@
         {{-- PASILLOS --}}
         <div class="col-md-6">
             <div class="card card-soft h-100">
-                <div class="card-header bg-azul-marino text-white d-flex justify-content-between align-items-center py-2">
+                <div class="card-header text-dark d-flex justify-content-between align-items-center py-2">
                     <h2 class="h6 m-0 section-title text-uppercase">Pasillos</h2>
                     <button type="button" class="btn btn-sm btn-success rounded-pill shadow-sm"
                             data-bs-toggle="modal" data-bs-target="#createPasilloModal">
@@ -67,11 +67,10 @@
                     </button>
                 </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                    <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle m-0">
                             <thead>
                                 <tr>
-                                    <th style="width: 25%;">ID</th>
                                     <th>Código</th>
                                     <th class="text-end" style="width: 35%;">Acciones</th>
                                 </tr>
@@ -79,7 +78,6 @@
                             <tbody>
                                 @forelse($pasillos as $pasillo)
                                     <tr>
-                                        <td class="fw-semibold">{{ $pasillo->id }}</td>
                                         <td>{{ $pasillo->nombre }}</td>
                                         <td class="text-end">
                                             <div class="d-inline-flex gap-1">
@@ -106,6 +104,13 @@
                             </tbody>
                         </table>
                     </div>
+
+                    {{-- PAGINACIÓN PASILLOS --}}
+                    <div class="p-2">
+                        @if($pasillos->lastPage() > 1)
+                            {{ $pasillos->links('pagination::bootstrap-5') }}
+                        @endif
+                    </div>
                 </div>
             </div>
         </div>
@@ -113,7 +118,7 @@
         {{-- NIVELES --}}
         <div class="col-md-6">
             <div class="card card-soft h-100">
-                <div class="card-header bg-azul-marino text-white d-flex justify-content-between align-items-center py-2">
+                <div class="card-header text-dark d-flex justify-content-between align-items-center py-2">
                     <h2 class="h6 m-0 section-title text-uppercase">Niveles</h2>
                     <button type="button" class="btn btn-sm btn-success rounded-pill shadow-sm"
                             data-bs-toggle="modal" data-bs-target="#createNivelModal">
@@ -121,11 +126,10 @@
                     </button>
                 </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                    <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle m-0">
                             <thead>
                                 <tr>
-                                    <th style="width: 25%;">ID</th>
                                     <th>Nombre</th>
                                     <th class="text-end" style="width: 35%;">Acciones</th>
                                 </tr>
@@ -133,7 +137,6 @@
                             <tbody>
                                 @forelse($niveles as $nivel)
                                     <tr>
-                                        <td class="fw-semibold">{{ $nivel->id }}</td>
                                         <td>{{ $nivel->nombre }}</td>
                                         <td class="text-end">
                                             <div class="d-inline-flex gap-1">
@@ -159,6 +162,13 @@
                                 @endforelse
                             </tbody>
                         </table>
+                    </div>
+
+                    {{-- PAGINACIÓN NIVELES --}}
+                    <div class="p-2">
+                        @if($niveles->lastPage() > 1)
+                            {{ $niveles->links('pagination::bootstrap-5') }}
+                        @endif
                     </div>
                 </div>
             </div>
@@ -214,18 +224,22 @@
                         @endforelse
                     </tbody>
                 </table>
+
+                {{-- PAGINACIÓN UBICACIONES --}}
+                <div class="p-2">
+                    {{ $ubicaciones->onEachSide(1)->links('pagination::bootstrap-5') }}
+                </div>
             </div>
         </div>
     </div>
 
 </div>
 
-{{-- MODALES DE CREACIÓN --}}
+{{-- MODALES --}}
 @include('pasillo.create', ['id' => 'createPasilloModal'])
 @include('nivel.create', ['id' => 'createNivelModal', 'pasillos' => $pasillos])
-@include('ubicacion.create', ['id' => 'createUbicacionModal', 'productos' => $productos])
+@include('ubicacion.create', ['id' => 'createUbicacionModal', 'productos' => $productos'])
 
-{{-- MODALES DE EDICIÓN --}}
 @if(isset($pasillos))
     @foreach($pasillos as $pasillo)
         @include('pasillo.edit', ['pasillo' => $pasillo, 'id' => 'editPasilloModal'.$pasillo->id])

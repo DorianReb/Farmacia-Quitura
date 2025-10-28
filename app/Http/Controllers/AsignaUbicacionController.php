@@ -5,32 +5,34 @@ namespace App\Http\Controllers;
 use App\Models\AsignaUbicacion;
 use App\Models\Producto;
 use App\Models\Nivel;
-use App\Models\Pasillo; // ⬅️ AGREGADO
+use App\Models\Pasillo;
 use Illuminate\Http\Request;
 
 class AsignaUbicacionController extends Controller
 {
     /**
-     * Mostrar listado de asignaciones
+     * Mostrar listado de asignaciones con paginación
      */
     public function index(Request $request)
     {
-        $query = AsignaUbicacion::with(['producto', 'nivel']);
+        // Paginación para pasillos
+        $pasillos = Pasillo::orderBy('codigo')->paginate(10);
 
-        // Buscador por producto o nivel
+        // Paginación para niveles
+        $niveles = Nivel::orderBy('numero')->paginate(10);
+
+        // Paginación para asignaciones con búsqueda
+        $query = AsignaUbicacion::with(['producto', 'nivel']);
         if ($request->q) {
             $query->whereHas('producto', fn($q) => $q->where('nombre_comercial', 'like', "%{$request->q}%"))
-                  ->orWhereHas('nivel', fn($q) => $q->where('nombre', 'like', "%{$request->q}%"));
+                  ->orWhereHas('nivel', fn($q) => $q->where('numero', 'like', "%{$request->q}%"));
         }
-
         $ubicaciones = $query->paginate(15);
 
-        // Colecciones necesarias para los SELECTS y las mini-tablas
+        // Productos para los selects (no se paginan)
         $productos = Producto::all();
-        $niveles = Nivel::all();
-        $pasillos = Pasillo::all(); // ⬅️ AGREGADO
 
-        return view('ubicacion.index', compact('ubicaciones', 'productos', 'niveles', 'pasillos')); // ⬅️ PASANDO PASILLOS
+        return view('ubicacion.index', compact('pasillos', 'niveles', 'ubicaciones', 'productos'));
     }
 
     /**
@@ -38,7 +40,6 @@ class AsignaUbicacionController extends Controller
      */
     public function store(Request $request)
     {
-        // El resto de la lógica de store es correcta.
         $request->validate([
             'producto_id' => 'required|exists:productos,id',
             'nivel_id' => 'required|exists:niveles,id',
@@ -54,7 +55,6 @@ class AsignaUbicacionController extends Controller
      */
     public function update(Request $request, AsignaUbicacion $asignaUbicacion)
     {
-        // El resto de la lógica de update es correcta.
         $request->validate([
             'producto_id' => 'required|exists:productos,id',
             'nivel_id' => 'required|exists:niveles,id',
@@ -70,7 +70,6 @@ class AsignaUbicacionController extends Controller
      */
     public function destroy(AsignaUbicacion $asignaUbicacion)
     {
-        // El resto de la lógica de destroy es correcta.
         $asignaUbicacion->delete();
 
         return redirect()->route('ubicacion.index')->with('success', 'Asignación eliminada correctamente.');
