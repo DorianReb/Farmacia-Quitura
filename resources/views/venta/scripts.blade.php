@@ -1,6 +1,23 @@
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', async function () {
+    function getProductoImgUrl(p) {
+        if (!p) return '/images/no-image.png';
+        if (p.imagen_url) return p.imagen_url;
+        if (p.imagen) {
+            if (/^https?:\/\//i.test(p.imagen)) return p.imagen;
+            return '/storage/' + p.imagen.replace(/^\/+/, '');
+        }
+        return '/images/no-image.png';
+    }
+
+    function setImgWithFallback(imgEl, url, altText) {
+        imgEl.src = url || '/images/no-image.png';
+        imgEl.alt = altText || 'Producto';
+        imgEl.onerror = () => { imgEl.src = '/images/no-image.png'; };
+    }
+
+
+    document.addEventListener('DOMContentLoaded', async function () {
 
     console.log('📌 DOM cargado, inicializando venta JS...');
 
@@ -24,7 +41,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     const modalMenuElement = document.getElementById('menuProductosModal');
     const modalMenu = modalMenuElement ? new bootstrap.Modal(modalMenuElement) : null;
     const modalMenuBody = modalMenuElement ? modalMenuElement.querySelector('.modal-body') : null;
-    
+
     // Elementos de Pago
     const formProcesarVenta = document.getElementById('formProcesarVenta');
     const inputProductosVenta = document.getElementById('inputProductosVenta');
@@ -36,12 +53,12 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // Bandera para la apertura automática del modal de menú (viene de VentaController@index)
     const abrirModalMenuAutomatico = {{ Js::from(isset($abrirModalMenu) ? $abrirModalMenu : false) }};
-    
+
     // RUTA API GENERADA CON BLADE (endpoint VentaController@buscarProductoPorCodigo)
     const RUTA_BUSCAR_API = '{{ route('venta.buscar.api', ['codigo' => '0']) }}';
-    
+
     // --- CSRF TOKEN (Asegúrate de tener <meta name="csrf-token" content="..."> en tu layout) ---
-    const csrfToken = document.querySelector('meta[name="csrf-token"]') ? 
+    const csrfToken = document.querySelector('meta[name="csrf-token"]') ?
                       document.querySelector('meta[name="csrf-token"]').getAttribute('content') : '';
 
     // ========================================================
@@ -55,7 +72,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     // ========================================================
     // FUNCIONES DE UTILIDAD (TU CÓDIGO ORIGINAL)
     // ========================================================
-    
+
     function renderTabla() {
         try {
             tbody.innerHTML = '';
@@ -83,7 +100,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             console.error('[ERROR] renderTabla()', e);
         }
     }
-    
+
     window.eliminarProducto = function(index) {
         listaVenta.splice(index, 1);
         renderTabla();
@@ -94,7 +111,12 @@ document.addEventListener('DOMContentLoaded', async function () {
             document.getElementById('infoProducto').classList.remove('d-none');
             document.getElementById('placeholderProducto').classList.add('d-none');
 
-            document.getElementById('producto_imagen').src = producto.imagen_url ?? producto.imagen ?? '/img/placeholder.png';
+            setImgWithFallback(
+                document.getElementById('producto_imagen'),
+                getProductoImgUrl(producto),
+                producto.nombre_comercial
+            );
+
             document.getElementById('producto_ubicacion').textContent = producto.ubicaciones_texto ?? '-';
             document.getElementById('producto_nombre_cientifico').textContent = producto.nombre_cientifico ?? '-';
             document.getElementById('producto_forma').textContent = producto.forma_farmaceutica?.nombre ?? '-';
@@ -109,7 +131,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             console.error('[ERROR] mostrarProductoUI()', e);
         }
     }
-    
+
     // ========================================================
     // FUNCIÓN PARA MOSTRAR DETALLES EN MODAL (Al hacer clic en el menú)
     // ========================================================
@@ -120,24 +142,29 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         try {
             const url = RUTA_BUSCAR_API.replace('/0', '/' + codigoBarras);
-            const res = await fetch(url); 
-            
+            const res = await fetch(url);
+
             if (res.status === 404) throw new Error('Producto no encontrado (404). Verifica la ruta.');
             if (!res.ok) throw new Error(`Error en la API: ${res.status}`);
-            
+
             const producto = await res.json();
-            
+
             document.getElementById('detalles_producto_nombre').textContent = producto.nombre_comercial ?? 'N/A';
             document.getElementById('detalles_producto_codigo').textContent = producto.codigo_barras ?? 'N/A';
             document.getElementById('detalles_producto_ubicacion').textContent = producto.ubicaciones_texto ?? 'N/A';
             document.getElementById('detalles_producto_cientifico').textContent = producto.nombre_cientifico ?? 'N/A';
             document.getElementById('detalles_producto_forma').textContent = producto.forma_farmaceutica?.nombre ?? 'N/A';
-            document.getElementById('detalles_producto_contenido').textContent = producto.contenido ?? 'N/A'; 
+            document.getElementById('detalles_producto_contenido').textContent = producto.contenido ?? 'N/A';
             document.getElementById('detalles_producto_marca').textContent = producto.marca?.nombre ?? 'N/A';
             document.getElementById('detalles_producto_presentacion').textContent = producto.presentacion?.nombre ?? 'N/A';
             document.getElementById('detalles_producto_receta').textContent = producto.requiere_receta ? 'Sí' : 'No';
             document.getElementById('detalles_producto_categoria').textContent = producto.categoria?.nombre ?? 'N/A';
-            document.getElementById('detalles_producto_imagen').src = producto.imagen ?? 'https://via.placeholder.com/250x150.png?text=Producto';
+            setImgWithFallback(
+                document.getElementById('detalles_producto_imagen'),
+                getProductoImgUrl(producto),
+                producto.nombre_comercial
+            );
+
 
             if (modalDetalles) {
                 modalDetalles.show();
@@ -156,11 +183,11 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         try {
             const url = RUTA_BUSCAR_API.replace('/0', '/' + codigo);
-            const res = await fetch(url); 
-            
+            const res = await fetch(url);
+
             if (res.status === 404) throw new Error('Producto no encontrado (404). Verifica la ruta.');
             if (!res.ok) throw new Error(`Error en la API: ${res.status}`);
-            
+
             const producto = await res.json();
 
             if (producto.error) throw new Error(producto.error);
@@ -196,9 +223,9 @@ document.addEventListener('DOMContentLoaded', async function () {
             }
 
             renderTabla();
-            inputCodigo.value = ''; 
-            inputCodigo.focus(); 
-            
+            inputCodigo.value = '';
+            inputCodigo.focus();
+
         } catch (err) {
             console.error('[ERROR agregarProducto()]', err);
             alert(`Error: ${err.message}`);
@@ -222,12 +249,12 @@ document.addEventListener('DOMContentLoaded', async function () {
         try {
             const url = '{{ route('producto.menu') }}' + `?q=${encodeURIComponent(query)}`;
             const response = await fetch(url);
-            
+
             if (!response.ok) throw new Error('No se pudo cargar el menú: ' + response.status);
 
             const html = await response.text();
             modalMenuBody.innerHTML = html; // Inyectar el HTML del partial
-            
+
             if (!modalMenu?.isShown) {
                  modalMenu?.show();
             }
@@ -245,15 +272,15 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (listaVenta.length === 0) return;
 
         // 🚨 CAMBIO CLAVE: Enviamos JSON con Content-Type
-        
+
         // 1. Ocultar modal de pago (si está visible)
-        modalPago?.hide(); 
+        modalPago?.hide();
 
         // 2. Preparar los datos para el envío (solo campos requeridos por VentaController@store)
         const productosParaEnvio = listaVenta.map(item => ({
             codigo_barras: item.codigo_barras,
             cantidad: item.cantidad,
-            lote: item.lote 
+            lote: item.lote
         }));
 
         // 3. Crear el cuerpo de la petición JSON
@@ -264,7 +291,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         // 4. Enviar la petición al servidor
         try {
             const url = formProcesarVenta.action;
-            
+
             const response = await fetch(url, {
                 method: 'POST',
                 // --- USAMOS HEADERS PARA ENVIAR EL TOKEN Y DECLARAR CONTENIDO JSON ---
@@ -280,7 +307,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
             if (!response.ok) {
                 const errorMsg = result.message || 'Error de red o de servidor.';
-                
+
                 if (result.errors) {
                      const firstError = Object.values(result.errors).flat()[0];
                      throw new Error(firstError || errorMsg);
@@ -291,8 +318,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             // 5. Éxito: limpiar la interfaz y notificar al usuario
             listaVenta = [];
             renderTabla();
-            mostrarProductoUI({}); 
-            
+            mostrarProductoUI({});
+
             alert(`✅ Venta registrada con éxito. ID: ${result.venta_id}`);
 
         } catch (error) {
@@ -310,17 +337,17 @@ document.addEventListener('DOMContentLoaded', async function () {
     // ========================================================
     // Eventos
     // ========================================================
-    
+
     // CORRECCIÓN: El formulario unificado maneja ambas lógicas
     if (formBuscarProducto) {
         formBuscarProducto.addEventListener('submit', async function(e) {
-            e.preventDefault(); 
+            e.preventDefault();
             const query = inputCodigo.value.trim();
-            
+
             // Lógica de Escaneo Rápido (Prioridad 1)
-            if (!isNaN(query) && query.length >= 10) { 
-                 await agregarProducto(query, 1); 
-            } 
+            if (!isNaN(query) && query.length >= 10) {
+                 await agregarProducto(query, 1);
+            }
             // Búsqueda por Nombre / Menú (Prioridad 2)
             else if (query.length > 0) {
                  buscarProductoPorNombre(query);
@@ -342,15 +369,15 @@ document.addEventListener('DOMContentLoaded', async function () {
                 }
             }
         });
-        
+
         // 2. Manejar el submit del formulario interno (formBuscarEnMenu)
         modalMenuBody.addEventListener('submit', function(e) {
             if (e.target.id === 'formBuscarEnMenu') {
-                e.preventDefault(); 
-                
+                e.preventDefault();
+
                 const input = e.target.querySelector('#inputBuscarEnMenu');
                 const query = input ? input.value : '';
-                
+
                 if (query.length > 0) {
                     buscarProductoPorNombre(query);
                 }
