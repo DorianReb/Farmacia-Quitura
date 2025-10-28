@@ -52,7 +52,6 @@
                 <table class="table table-hover align-middle m-0">
                     <thead class="bg-azul-marino text-white">
                         <tr>
-                            <th>ID Venta</th>
                             <th>Fecha</th>
                             <th>Vendedor</th>
                             <th class="text-end">Total</th>
@@ -62,7 +61,6 @@
                     <tbody>
                         @forelse($ventas as $venta)
                         <tr>
-                            <td class="fw-bold">#{{ $venta->id }}</td>
                             <td>{{ \Carbon\Carbon::parse($venta->fecha)->format('Y-m-d H:i') }}</td>
                             <td>{{ $venta->usuario->nombreCompleto ?? 'N/A' }}</td>
                             <td class="text-end h6 m-0">${{ number_format($venta->total, 2) }}</td>
