@@ -1,171 +1,182 @@
 @extends('layouts.sidebar-admin')
 
 @section('content')
-    <style>
-        .card-soft{border:0;border-radius:14px;box-shadow:0 8px 20px rgba(16,24,40,.06);}
-        .table-hover tbody tr:hover{background:#f7f9ff;}
-        .accordion-button{font-weight:700}
-        .btn-icon{padding:.45rem .6rem;border-radius:999px;display:inline-flex;align-items:center;justify-content:center}
-    </style>
+<div class="container-xxl">
 
-    @php($q = $q ?? '')
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div class="d-flex align-items-center gap-2">
-            <div class="bg-azul-marino text-white rounded-3 px-3 py-2 d-inline-flex align-items-center gap-2 shadow-sm">
-                <i class="fa-solid fa-diagram-project"></i>
-                <h1 class="h5 m-0">Asignar componentes</h1>
-            </div>
-            @if($q !== '')
-                <span class="badge bg-secondary">Filtro: “{{ $q }}”</span>
-            @endif
+    {{-- ENCABEZADO Y TÍTULO --}}
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-3 mb-md-4 gap-3">
+        <div class="bg-azul-marino text-white rounded-3 px-3 py-2 d-inline-flex align-items-center gap-2 shadow-sm">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <h1 class="h4 m-0">Historial de Transacciones</h1>
         </div>
-
-        {{-- Botón abre modal crear (igual que Categorías: success + circular icon-only) --}}
-        <button type="button"
-                class="btn btn-success btn-icon shadow-sm"
-                data-bs-toggle="modal"
-                data-bs-target="#createAsignaComponenteModal"
-                title="Agregar nuevo">
-            <i class="fa-solid fa-plus"></i>
-        </button>
+        
+        {{-- Botón de Regreso a la Vista de Venta --}}
+        <a href="{{ route('venta.index') }}" class="btn btn-secondary">
+            <i class="fa-solid fa-cash-register me-1"></i> Ir a Vender
+        </a>
     </div>
 
-    {{-- Buscador: Buscar = success, Limpiar = outline-secondary --}}
-    <form class="row g-2 mb-3" method="get" action="{{ route('asigna_componentes.index') }}">
-        <div class="col-12 col-md-6">
-            <input type="text" name="q" value="{{ $q }}" class="form-control"
-                   placeholder="Busca por producto (nombre comercial) o por nombre científico…">
+    {{-- FILTROS DE BÚSQUEDA AVANZADA --}}
+    <div class="card card-soft mb-4 p-3">
+        <form method="GET" action="{{ route('venta.historial') }}" class="row g-3 align-items-end">
+            <div class="col-md-4 col-lg-3">
+                <label for="q" class="form-label mb-1"><small>Buscar (ID Venta/Vendedor)</small></label>
+                <input type="text" name="q" id="q" class="form-control" value="{{ $q ?? '' }}" placeholder="ID, nombre o apellido">
+            </div>
+            <div class="col-md-3 col-lg-2">
+                <label for="desde" class="form-label mb-1"><small>Fecha Desde</small></label>
+                <input type="date" name="desde" id="desde" class="form-control" value="{{ $desde ?? '' }}">
+            </div>
+            <div class="col-md-3 col-lg-2">
+                <label for="hasta" class="form-label mb-1"><small>Fecha Hasta</small></label>
+                <input type="date" name="hasta" id="hasta" class="form-control" value="{{ $hasta ?? '' }}">
+            </div>
+            <div class="col-md-2 col-lg-1">
+                <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-search"></i></button>
+            </div>
+            @if(isset($q) || isset($desde) || isset($hasta))
+            <div class="col-1">
+                <a href="{{ route('venta.historial') }}" class="btn btn-outline-secondary w-100" title="Limpiar Filtros">
+                    <i class="fa-regular fa-circle-xmark"></i>
+                </a>
+            </div>
+            @endif
+        </form>
+    </div>
+
+    {{-- TABLA PRINCIPAL DE VENTAS --}}
+    <div class="card card-soft">
+        <div class="card-header">Ventas Registradas (Resumen)</div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle m-0">
+                    <thead class="bg-azul-marino text-white">
+                        <tr>
+                            <th>ID Venta</th>
+                            <th>Fecha</th>
+                            <th>Vendedor</th>
+                            <th class="text-end">Total</th>
+                            <th class="text-end" style="width: 120px;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($ventas as $venta)
+                        <tr>
+                            <td class="fw-bold">#{{ $venta->id }}</td>
+                            <td>{{ \Carbon\Carbon::parse($venta->fecha)->format('Y-m-d H:i') }}</td>
+                            <td>{{ $venta->usuario->nombreCompleto ?? 'N/A' }}</td>
+                            <td class="text-end h6 m-0">${{ number_format($venta->total, 2) }}</td>
+                            <td class="text-end">
+                                
+                                {{-- ACCIÓN 1: VER TICKET (Activa) --}}
+                                    <a href="#" onclick="event.preventDefault(); cargarTicketEnModal({{ $venta->id }})" 
+                                    class="btn btn-sm btn-info text-white rounded-pill shadow-sm" title="Ver Ticket">
+                                        <i class="fa-solid fa-receipt"></i>
+                                    </a>
+                                {{-- ACCIÓN 2: ANULAR VENTA (Formulario DELETE) --}}
+                                <form action="{{ route('venta.anular', $venta->id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de anular la venta #{{ $venta->id }}? Esto restaurará el stock.')">
+                                    @csrf 
+                                    @method('DELETE') {{-- Usamos DELETE para anular --}}
+                                    <button type="submit" class="btn btn-sm btn-danger rounded-pill shadow-sm" title="Anular Venta">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">
+                                <i class="fa-solid fa-magnifying-glass-arrow-right fa-2x mb-2"></i>
+                                <p class="m-0">No se encontraron ventas que coincidan con los criterios de búsqueda.</p>
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
-        <div class="col-6 col-md-3 d-grid">
-            <button class="btn btn-success" data-bs-toggle="tooltip" title="Buscar">
-                <i class="fa-solid fa-search"></i> <span class="d-none d-sm-inline">Buscar</span>
-            </button>
+        
+        {{-- Paginación --}}
+        @if(isset($ventas) && method_exists($ventas, 'links'))
+        <div class="card-footer bg-white border-0 pt-3 pb-2 d-flex justify-content-center">
+            {{ $ventas->links('pagination::bootstrap-4') }}
         </div>
-        <div class="col-6 col-md-3 d-grid">
-            <a href="{{ route('asigna_componentes.index') }}" class="btn btn-outline-secondary" data-bs-toggle="tooltip" title="Limpiar búsqueda">
-                <i class="fa-regular fa-circle-xmark"></i> <span class="d-none d-sm-inline">Limpiar</span>
-            </a>
-        </div>
-    </form>
-
-    {{-- Alert éxito --}}
-    @if(session('success'))
-        <div class="alert alert-success shadow-sm">{{ session('success') }}</div>
-    @endif
-
-    {{-- Sin datos --}}
-    @if(($grupos ?? collect())->isEmpty())
-        <div class="alert alert-light border">
-            No hay asignaciones registradas @if($q) para “<strong>{{ $q }}</strong>” @endif.
-        </div>
-    @else
-        {{-- Acordeón por Producto (nombre_comercial) --}}
-        <div class="accordion" id="accProductos">
-            @foreach($grupos as $productoNombre => $asignaciones)
-                <div class="accordion-item mb-2 border-0 shadow-sm card-soft">
-                    <h2 class="accordion-header">
-                        <button class="accordion-button {{ $loop->first && $q === '' ? '' : 'collapsed' }}" type="button"
-                                data-bs-toggle="collapse"
-                                data-bs-target="#p{{ $loop->index }}"
-                                aria-expanded="{{ $loop->first && $q === '' ? 'true' : 'false' }}"
-                                aria-controls="p{{ $loop->index }}">
-                            {{ $productoNombre }}
-                            <span class="ms-2 badge bg-primary">{{ $asignaciones->count() }}</span>
-                        </button>
-                    </h2>
-
-                    <div id="p{{ $loop->index }}" class="accordion-collapse collapse {{ $loop->first && $q === '' ? 'show' : '' }}"
-                         data-bs-parent="#accProductos">
-                        <div class="accordion-body">
-                            <div class="table-responsive">
-                                <table class="table table-hover align-middle mb-0">
-                                    <thead class="bg-azul-marino text-white">
-                                    <tr>
-                                        <th style="width: 42%">Componente (Nombre científico)</th>
-                                        <th style="width: 38%">Fuerza / Base</th>
-                                        <th class="text-end" style="width: 20%">Acciones</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    @foreach($asignaciones as $row)
-                                        <tr>
-                                            <td class="fw-semibold">
-                                                {{ $row->componente->nombre ?? '—' }}
-                                            </td>
-                                            <td>
-                                                {{-- Ejemplo: 500 mg / 5 ml (sin ceros a la derecha) --}}
-                                                {{ rtrim(rtrim(number_format($row->fuerza_cantidad, 2, '.', ''), '0'), '.') }}
-                                                {{ $row->fuerzaUnidad->nombre ?? '' }}
-                                                /
-                                                {{ rtrim(rtrim(number_format($row->base_cantidad, 2, '.', ''), '0'), '.') }}
-                                                {{ $row->baseUnidad->nombre ?? '' }}
-                                            </td>
-                                            <td class="text-end">
-                                                {{-- Acciones: igual que Categorías (icon-only redondeadas) --}}
-                                                <div class="btn-group btn-group-sm" role="group">
-                                                    {{-- Editar (modal) --}}
-                                                    <button class="btn btn-warning shadow-sm rounded-pill btn-icon"
-                                                            data-bs-toggle="modal"
-                                                            data-bs-target="#editAsignaComponenteModal{{ $row->id }}"
-                                                            title="Editar">
-                                                        <i class="fa-regular fa-pen-to-square"></i>
-                                                    </button>
-
-                                                    {{-- Eliminar --}}
-                                                    <form action="{{ route('asigna_componentes.destroy', $row->id) }}"
-                                                          method="post" class="d-inline"
-                                                          onsubmit="return confirm('¿Eliminar esta asignación?')">
-                                                        @csrf @method('DELETE')
-                                                        <button class="btn btn-danger shadow-sm rounded-pill btn-icon" type="submit" title="Eliminar">
-                                                            <i class="fa-regular fa-trash-can"></i>
-                                                        </button>
-                                                    </form>
-                                                </div>
-                                            </td>
-                                        </tr>
-
-                                        {{-- Modal de edición (incluido por fila) --}}
-                                        @isset($productos, $componentes, $unidades)
-                                            @include('asigna_componentes.edit', [
-                                                'row' => $row,
-                                                'productos' => $productos,
-                                                'componentes' => $componentes,
-                                                'unidades' => $unidades
-                                            ])
-                                        @endisset
-                                    @endforeach
-                                    </tbody>
-                                </table>
-                            </div> {{-- /table-responsive --}}
-                        </div>
-                    </div>
-                </div>
-            @endforeach
-        </div>
-    @endif
-
-    {{-- Modal de creación --}}
-    @isset($productos, $componentes, $unidades)
-        @include('asigna_componentes.create', [
-            'productos' => $productos,
-            'componentes' => $componentes,
-            'unidades' => $unidades
-        ])
-    @endisset
-
-    {{-- Reabrir modal si hubo errores --}}
-    @if ($errors->any())
-        @if (session('from_modal') === 'create_asigna_componente')
-            <script>
-                document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal('#createAsignaComponenteModal').show());
-            </script>
-        @elseif (session('from_modal') === 'edit_asigna_componente' && session('edit_id'))
-            <script>
-                document.addEventListener('DOMContentLoaded', () => {
-                    const el = document.getElementById('editAsignaComponenteModal{{ session('edit_id') }}');
-                    if (el) new bootstrap.Modal(el).show();
-                });
-            </script>
         @endif
-    @endif
+    </div>
+</div>
+
 @endsection
+{{-- MODAL PARA VISUALIZAR E IMPRIMIR TICKET --}}
+@push('modals')
+<div class="modal fade" id="modalVerTicket" tabindex="-1" aria-labelledby="modalVerTicketLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-azul-marino text-white">
+                <h5 class="modal-title" id="modalVerTicketLabel">Ticket de Venta</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" id="ticketContent">
+                {{-- Aquí se inyectará el contenido HTML del ticket --}}
+                <div class="text-center py-5">Cargando...</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-success" id="btnPrintTicket">
+                    <i class="fa-solid fa-print"></i> Imprimir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+@endpush
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modalVerTicketElement = document.getElementById('modalVerTicket');
+    const ticketContent = document.getElementById('ticketContent');
+    const btnPrintTicket = document.getElementById('btnPrintTicket');
+
+    // 1. FUNCIÓN PRINCIPAL PARA CARGAR EL TICKET
+    window.cargarTicketEnModal = async function(ventaId) {
+        // Muestra el spinner de carga
+        ticketContent.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Cargando ticket #` + ventaId + `...</p></div>`;
+        const modalInstance = new bootstrap.Modal(modalVerTicketElement);
+        modalInstance.show();
+
+        try {
+            // Llama a la ruta de Laravel que devuelve el HTML renderizado del ticket
+            const url = '{{ route('venta.ticket', ['venta' => 'VENTA_ID']) }}'.replace('VENTA_ID', ventaId);
+            const response = await fetch(url);
+
+            if (!response.ok) throw new Error('No se pudo obtener la vista del ticket. Estado: ' + response.status);
+
+            const htmlContent = await response.text();
+            
+            // Inyectar el HTML dentro del modal
+            ticketContent.innerHTML = htmlContent;
+
+        } catch (error) {
+            console.error('[ERROR cargarTicketEnModal]', error);
+            ticketContent.innerHTML = `<div class="alert alert-danger">Error al cargar el ticket. ${error.message}</div>`;
+        }
+    }
+
+    // 2. EVENTO PARA EL BOTÓN DE IMPRESIÓN DENTRO DEL MODAL
+    if (btnPrintTicket) {
+        btnPrintTicket.addEventListener('click', function() {
+            // Abre el diálogo de impresión para el contenido específico
+            const content = ticketContent.innerHTML;
+            const printWindow = window.open('', '', 'height=500,width=500');
+            printWindow.document.write('<html><head><title>Imprimir Ticket</title>');
+            // Opcional: añade CSS de impresión aquí si es necesario
+            printWindow.document.write('</head><body>');
+            printWindow.document.write(content);
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            printWindow.print();
+        });
+    }
+
+});
+</script>
+@endpush

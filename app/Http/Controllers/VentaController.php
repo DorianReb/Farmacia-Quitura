@@ -215,4 +215,11 @@ class VentaController extends Controller
 
         return view('venta.historial', compact('ventas','q','desde','hasta'));
     }
+
+    public function ticket(Venta $venta)
+    {
+        $venta->load('detalles.lote.producto', 'usuario');
+        // CAMBIO CLAVE: Devolver la vista como HTML puro (renderizado) para inyectar en AJAX.
+        return view('venta.ticket', compact('venta'))->render(); 
+    }
 }

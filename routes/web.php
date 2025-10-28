@@ -102,6 +102,8 @@ Route::middleware(['auth', 'estado', 'role:Vendedor,Administrador,Superadmin'])-
     Route::get('/productos/menu', [ProductoController::class, 'menu'])->name('producto.menu');
     Route::get('/detalleventa', [DetalleVentaController::class, 'index'])->name('detalleventa.index');
     Route::get('/venta/{venta}', [VentaController::class, 'detalles'])->name('venta.detalles');
+    Route::delete('/venta/anular/{venta}', [VentaController::class, 'anular'])->name('venta.anular');
+    Route::get('/venta/ticket/{venta}', [VentaController::class, 'ticket'])->name('venta.ticket');
 
     // Ruta temporal de dashboard vendedor (nombre intacto)
     Route::view('/dashboard/vendedor', 'vendedor.dashboard')->name('vendedor.dashboard');
