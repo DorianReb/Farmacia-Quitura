@@ -9,19 +9,22 @@
             <h1 class="h4 m-0">Vender</h1>
         </div>
         
+        {{-- BOTÓN DE REDIRECCIÓN AL CRUD/INDEX DE DETALLES DE VENTA --}}
+        <a href="{{ route('detalleventa.index') }}" class="btn btn-secondary">
+            <i class="fa-solid fa-list-check me-1"></i> Ver Detalles de Venta
+        </a>
+        
         {{-- UNIFICADO: Este formulario será manejado completamente por JavaScript --}}
         <form id="formBuscarProducto" class="d-inline-block w-100" style="min-width:300px;max-width:480px;">
             <div class="input-group">
                 <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
-                {{-- name="q" se mantiene para accesibilidad/compatibilidad --}}
                 <input type="search" name="q" id="codigo_barras_input" class="form-control" 
                        placeholder="Buscar producto (nombre) o escanear (código)..." value="{{ request('q') ?? '' }}"> 
-                {{-- Usamos type="submit" para que el ENTER funcione, el JS lo interceptará --}}
                 <button class="btn btn-success" type="submit"><i class="fa-solid fa-search"></i></button>
             </div>
         </form>
     </div>
-
+    
     {{-- Datos del producto escaneado --}}
     <div class="card card-soft mb-4">
         <div class="card-header">Datos del producto escaneado</div>
@@ -80,15 +83,28 @@
                     <i class="fa-solid fa-plus-circle"></i> Añadir código de forma manual
                 </button>
                 <div class="d-flex align-items-center gap-3">
-                    <button class="btn btn-primary shadow-sm" style="min-width:120px;">
+                    
+                    {{-- BOTÓN PRINCIPAL PARA PROCESAR VENTA (Abre modalPago) --}}
+                    <button class="btn btn-primary shadow-sm" type="button" 
+                            data-bs-toggle="modal" data-bs-target="#modalPago" 
+                            id="btnProcesarVenta" style="min-width:120px;">
                         <i class="fa-solid fa-cash-coin"></i> Total
                     </button>
+                    
                     <span id="totalVentaSpan" class="h3 fw-bold m-0 text-dark">$0.00</span>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+{{-- FORMULARIO OCULTO PARA ENVIAR DATOS DE VENTA --}}
+<form id="formProcesarVenta" method="POST" action="{{ route('venta.store') }}" style="display: none;">
+    @csrf
+    {{-- Input donde JS inyectará la lista de productos en JSON antes de enviar --}}
+    <input type="hidden" name="productos" id="inputProductosVenta"> 
+</form>
+
 
 {{-- MODAL 1: MENÚ DE PRODUCTOS (Abre con la búsqueda por nombre) --}}
 <div class="modal fade" id="menuProductosModal" tabindex="-1" aria-labelledby="menuProductosModalLabel" aria-hidden="true">
@@ -99,7 +115,6 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body">
-                {{-- CORRECCIÓN: Usamos solo 'producto.menu' --}}
                 @if (isset($productosBuscados) && $productosBuscados->count())
                     @include('producto.menu', ['productos' => $productosBuscados]) 
                 @elseif (request('q'))
@@ -159,6 +174,10 @@
         </div>
     </div>
 </div>
+
+{{-- MODAL 3: PAGO / COBRO --}}
+@include('venta.pago') 
+
 
 {{-- Partials --}}
 @include('venta.create')

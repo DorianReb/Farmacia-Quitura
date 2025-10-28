@@ -12,6 +12,7 @@ use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\SolicitudController;
 use App\Http\Controllers\AsignaPromocionController;
 use App\Http\Controllers\AsignaComponenteController;
+use App\Http\Controllers\DetalleVentaController;
 
 
 Route::get('/', function () {
@@ -99,6 +100,8 @@ Route::middleware(['auth', 'estado', 'role:Vendedor,Administrador,Superadmin'])-
     Route::resource('asignapromocion', AsignaPromocionController::class)->names('asignapromocion')->only([
     'index', 'create', 'store', 'destroy']);
     Route::get('/productos/menu', [ProductoController::class, 'menu'])->name('producto.menu');
+    Route::get('/detalleventa', [DetalleVentaController::class, 'index'])->name('detalleventa.index');
+    Route::get('/venta/{venta}', [VentaController::class, 'detalles'])->name('venta.detalles');
 
     // Ruta temporal de dashboard vendedor (nombre intacto)
     Route::view('/dashboard/vendedor', 'vendedor.dashboard')->name('vendedor.dashboard');

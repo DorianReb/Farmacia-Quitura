@@ -20,21 +20,18 @@ class VentaController extends Controller
         $q = trim($request->q);
 
         // Lógica para obtener productos basados en el nombre comercial (búsqueda principal)
-        // Incluimos las relaciones necesarias para mostrar la información básica en el modal de menú
         $productosBuscados = Producto::query()
-            ->with(['lotes']) // Solo si necesitas saber el stock total para el menú
+            ->with(['lotes']) 
             ->when($q, function ($query) use ($q) {
-                // Priorizamos la búsqueda por nombre comercial
                 $query->where('nombre_comercial', 'LIKE', "%{$q}%")
                     ->orWhere('codigo_barras', 'LIKE', "{$q}");
             })
             ->orderBy('nombre_comercial', 'asc')
             ->paginate(10, ['*'], 'productos_page');
 
-        // NUEVO: Bandera para que el JavaScript sepa si debe abrir el modal al cargar la página.
+        // Bandera para la apertura del modal (solo si hay query y resultados)
         $abrirModalMenu = ($q && $productosBuscados->count() > 0) ? true : false;
         
-        // El resto de variables que usas en la vista:
         return view('venta.index', compact('productosBuscados', 'productoEncontrado', 'itemsEnVenta', 'totalVenta', 'q', 'abrirModalMenu'));
     }
 
@@ -47,7 +44,7 @@ class VentaController extends Controller
             'formaFarmaceutica',
             'categoria',
             'asignaUbicaciones.nivel.pasillo',
-            'asignaComponentes.componente' // Corregida la relación
+            'asignaComponentes.componente'
         ])
         ->where('codigo_barras', $codigo)
         ->first();
@@ -56,108 +53,109 @@ class VentaController extends Controller
             return response()->json(['message' => 'Producto no encontrado'], 404);
         }
 
-        // ... (Tu código para calcular existencias y ordenar lotes) ...
         $producto->existencias_calculadas = $producto->lotes->sum('cantidad');
         $producto->lotes = $producto->lotes->sortBy('fecha_caducidad')->values();
 
-        // --- INICIO DEL PARCHE DE UBICACIONES Y COMPONENTES ---
-
-        // Sincronizamos las colecciones (ya estaba bien)
         $producto->asigna_ubicaciones = $producto->asignaUbicaciones ?? collect();
         $producto->asigna_componentes = $producto->asignaComponentes ?? collect();
         $producto->forma_farmaceutica = $producto->formaFarmaceutica ?? null;
 
-        // Extraer Nombre Científico (ya estaba bien)
         $primerComponente = $producto->asigna_componentes->first();
         $producto->nombre_cientifico = $primerComponente?->componente?->nombre ?? null;
 
-
-        // --- LÓGICA DE FORMATEO DE UBICACIONES (LA CLAVE) ---
-        // La variable $ubicacionesFormateadas se inicializa aquí
         $ubicacionesFormateadas = [];
-        
         foreach ($producto->asigna_ubicaciones as $asignacion) {
-            
-            // Usamos el accesor ->nombre del modelo Nivel que ya trae el Pasillo::codigo (ej: P01 - Nivel 1)
             $nivelNombreCompleto = $asignacion->nivel?->nombre;
-            
             if ($nivelNombreCompleto) {
                 $ubicacionesFormateadas[] = $nivelNombreCompleto;
             }
         }
 
-        // Creamos la propiedad simple para el JSON
         $producto->ubicaciones_texto = implode(', ', array_unique($ubicacionesFormateadas));
         
-        // Finalizamos limpiando las relaciones complejas para un JSON más limpio
         $producto->unsetRelation('asignaUbicaciones');
         $producto->unsetRelation('asignaComponentes');
 
-
         return response()->json($producto);
     }
-    // ...
-
-
 
     /**
      * Store a newly created resource in storage.
+     * Recibe JSON del front-end.
      */
     public function store(Request $request)
     {
-        $request->validate([
+        // 🚨 CAMBIO CLAVE: Asumimos que los datos vienen en formato JSON en el cuerpo.
+        // Si usamos fetch con Content-Type: application/json, Laravel pone el cuerpo en $request->json().
+        $data = $request->validate([
             'productos' => 'required|array|min:1',
             'productos.*.codigo_barras' => 'required|string',
             'productos.*.cantidad' => 'required|integer|min:1',
-            'productos.*.lote' => 'required|integer'
+            'productos.*.lote' => 'required|integer' // El ID del lote
         ]);
+        
+        // Iniciamos la transacción de base de datos
+        DB::beginTransaction();
 
-        $venta = Venta::create([
-            'usuario_id' => Auth::id(),
-            'fecha' => now(),
-            'total' => 0
-        ]);
-
-        $total = 0;
-
-        foreach ($request->productos as $p) {
-            $lote = Lote::find($p['lote']);
-            if (!$lote) continue;
-
-            // Obtener producto relacionado
-            $producto = $lote->producto;
-
-            // Calcular subtotal usando precio de venta del producto
-            $subtotal = $p['cantidad'] * $producto->precio_venta;
-
-            DetalleVenta::create([
-                'venta_id' => $venta->id,
-                'lote_id' => $lote->id,
-                'cantidad' => $p['cantidad'],
-                'subtotal' => $subtotal
+        try {
+            $venta = Venta::create([
+                'usuario_id' => Auth::id(),
+                'fecha' => now(),
+                'total' => 0
             ]);
 
-            $total += $subtotal;
+            $total = 0;
+            $productosVendidos = $data['productos']; // Usamos el array validado
 
-            // Reducir stock del lote
-            $lote->cantidad -= $p['cantidad'];
-            $lote->save();
+            foreach ($productosVendidos as $p) {
+                // 1. Encontrar el lote y verificar stock
+                $lote = Lote::find($p['lote']);
+                if (!$lote || $lote->cantidad < $p['cantidad']) {
+                     DB::rollBack();
+                     return response()->json(['message' => 'Stock insuficiente para lote ' . $p['lote'] . '.'], 422);
+                }
+
+                // 2. Obtener producto relacionado
+                $producto = $lote->producto;
+
+                // 3. Calcular y crear detalle
+                $subtotal = $p['cantidad'] * $producto->precio_venta;
+
+                DetalleVenta::create([
+                    'venta_id' => $venta->id,
+                    'lote_id' => $lote->id,
+                    'cantidad' => $p['cantidad'],
+                    'subtotal' => $subtotal
+                ]);
+
+                $total += $subtotal;
+
+                // 4. Reducir stock del lote
+                $lote->cantidad -= $p['cantidad'];
+                $lote->save();
+            }
+
+            // 5. Guardar total de la venta y commit
+            $venta->total = $total;
+            $venta->save();
+            
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Venta registrada correctamente',
+                'venta_id' => $venta->id
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            // Esto atrapará errores como el de SQLSTATE (si no se reduce el stock)
+            return response()->json(['message' => 'Fallo interno al procesar la venta: ' . $e->getMessage()], 500);
         }
-
-        // Guardar total de la venta
-        $venta->total = $total;
-        $venta->save();
-
-        return response()->json([
-            'message' => 'Venta registrada correctamente',
-            'venta_id' => $venta->id
-        ]);
     }
-
 
     public function historial(Request $request)
     {
-        $q     = trim($request->input('q',''));
+        $q = trim($request->input('q',''));
         $desde = $request->input('desde');
         $hasta = $request->input('hasta');
 
@@ -179,10 +177,8 @@ class VentaController extends Controller
             ->paginate(20)
             ->appends(compact('q','desde','hasta'));
 
-        // 🔧 IMPORTANTE: trabajar con la colección interna del paginator
         $collection = $ventas->getCollection();
 
-        // (Opcional) buscar descuentos/promos por lote
         $loteIds = $collection
             ->flatMap(fn($venta) => $venta->detalles->pluck('lote_id'))
             ->filter()
@@ -203,23 +199,20 @@ class VentaController extends Controller
                 ->map(fn($rows)=>(float)$rows->max('porcentaje'));
         }
 
-        // Enriquecer detalles para la vista/row-details del DataTable
         foreach ($collection as $venta) {
             foreach ($venta->detalles as $d) {
                 $lote = $d->lote;
                 $prod = $lote?->producto;
 
                 $d->producto_nombre = $prod->nombre ?? '—';
-                $d->lote_codigo     = $lote->numero ?? $lote->codigo ?? $lote->lote ?? null;
+                $d->lote_codigo = $lote->numero ?? $lote->codigo ?? $lote->lote ?? null;
                 $d->precio_unitario = (float)($lote->precio_venta ?? 0);
-                $d->descuento       = (float)($promos[$lote->id] ?? 0); // %
+                $d->descuento = (float)($promos[$lote->id] ?? 0); // %
             }
         }
 
-        // Volver a colocar la colección enriquecida dentro del paginator (opcional)
         $ventas->setCollection($collection);
 
         return view('venta.historial', compact('ventas','q','desde','hasta'));
     }
-
 }

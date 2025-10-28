@@ -11,28 +11,39 @@ document.addEventListener('DOMContentLoaded', async function () {
     const formBuscarProducto = document.getElementById('formBuscarProducto');
     const inputCodigo = document.getElementById('codigo_barras_input');
 
-    // --- Modales ---
+    // --- Modales y Botones ---
     const modalElement = document.getElementById('modalAgregarManual');
     const formAgregarManual = document.getElementById('formAgregarManual');
     const modalManual = modalElement ? new bootstrap.Modal(modalElement) : null;
     const inputCodigoManual = document.getElementById('manual_codigo_barras');
     const inputCantidadManual = document.getElementById('manual_cantidad');
 
-    // MODAL DE DETALLES
     const modalDetallesElement = document.getElementById('modalDetallesProducto');
     const modalDetalles = modalDetallesElement ? new bootstrap.Modal(modalDetallesElement) : null;
 
-    // MODAL DEL MENÚ DE PRODUCTOS
     const modalMenuElement = document.getElementById('menuProductosModal');
     const modalMenu = modalMenuElement ? new bootstrap.Modal(modalMenuElement) : null;
     const modalMenuBody = modalMenuElement ? modalMenuElement.querySelector('.modal-body') : null;
+    
+    // Elementos de Pago
+    const formProcesarVenta = document.getElementById('formProcesarVenta');
+    const inputProductosVenta = document.getElementById('inputProductosVenta');
+    const modalPagoElement = document.getElementById('modalPago');
+    const modalPago = modalPagoElement ? new bootstrap.Modal(modalPagoElement) : null;
+    const modalTotalPagar = document.getElementById('modalTotalPagar');
+    const btnConfirmarVenta = document.getElementById('btnConfirmarVenta');
+
 
     // Bandera para la apertura automática del modal de menú (viene de VentaController@index)
     const abrirModalMenuAutomatico = {{ Js::from(isset($abrirModalMenu) ? $abrirModalMenu : false) }};
     
-    // RUTA API GENERADA CON BLADE (para detalles y agregar - el endpoint VentaController@buscarProductoPorCodigo)
+    // RUTA API GENERADA CON BLADE (endpoint VentaController@buscarProductoPorCodigo)
     const RUTA_BUSCAR_API = '{{ route('venta.buscar.api', ['codigo' => '0']) }}';
     
+    // --- CSRF TOKEN (Asegúrate de tener <meta name="csrf-token" content="..."> en tu layout) ---
+    const csrfToken = document.querySelector('meta[name="csrf-token"]') ? 
+                      document.querySelector('meta[name="csrf-token"]').getAttribute('content') : '';
+
     // ========================================================
     // LÓGICA DE INICIO - Abrir Modal de Menú si hay resultados
     // ========================================================
@@ -42,7 +53,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
 
     // ========================================================
-    // FUNCIONES DE UTILIDAD
+    // FUNCIONES DE UTILIDAD (TU CÓDIGO ORIGINAL)
     // ========================================================
     
     function renderTabla() {
@@ -116,7 +127,6 @@ document.addEventListener('DOMContentLoaded', async function () {
             
             const producto = await res.json();
             
-            // 1. Rellenar los campos del modal de detalles
             document.getElementById('detalles_producto_nombre').textContent = producto.nombre_comercial ?? 'N/A';
             document.getElementById('detalles_producto_codigo').textContent = producto.codigo_barras ?? 'N/A';
             document.getElementById('detalles_producto_ubicacion').textContent = producto.ubicaciones_texto ?? 'N/A';
@@ -129,7 +139,6 @@ document.addEventListener('DOMContentLoaded', async function () {
             document.getElementById('detalles_producto_categoria').textContent = producto.categoria?.nombre ?? 'N/A';
             document.getElementById('detalles_producto_imagen').src = producto.imagen ?? 'https://via.placeholder.com/250x150.png?text=Producto';
 
-            // 2. Mostrar el modal de detalles
             if (modalDetalles) {
                 modalDetalles.show();
             }
@@ -211,7 +220,6 @@ document.addEventListener('DOMContentLoaded', async function () {
         modalMenu?.show(); // Abre el modal inmediatamente
 
         try {
-            // Usamos la ruta 'producto.menu'. El controlador ProductoController@menu debe devolver HTML parcial.
             const url = '{{ route('producto.menu') }}' + `?q=${encodeURIComponent(query)}`;
             const response = await fetch(url);
             
@@ -220,7 +228,6 @@ document.addEventListener('DOMContentLoaded', async function () {
             const html = await response.text();
             modalMenuBody.innerHTML = html; // Inyectar el HTML del partial
             
-            // Si por alguna razón el modal se cerró antes, lo volvemos a mostrar.
             if (!modalMenu?.isShown) {
                  modalMenu?.show();
             }
@@ -231,29 +238,93 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     }
 
+    // ========================================================
+    // FUNCIÓN: Confirma y envía la venta (AJAX)
+    // ========================================================
+    async function confirmarVenta() {
+        if (listaVenta.length === 0) return;
+
+        // 🚨 CAMBIO CLAVE: Enviamos JSON con Content-Type
+        
+        // 1. Ocultar modal de pago (si está visible)
+        modalPago?.hide(); 
+
+        // 2. Preparar los datos para el envío (solo campos requeridos por VentaController@store)
+        const productosParaEnvio = listaVenta.map(item => ({
+            codigo_barras: item.codigo_barras,
+            cantidad: item.cantidad,
+            lote: item.lote 
+        }));
+
+        // 3. Crear el cuerpo de la petición JSON
+        const jsonBody = JSON.stringify({
+            productos: productosParaEnvio
+        });
+
+        // 4. Enviar la petición al servidor
+        try {
+            const url = formProcesarVenta.action;
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                // --- USAMOS HEADERS PARA ENVIAR EL TOKEN Y DECLARAR CONTENIDO JSON ---
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken // Enviamos el token para evitar el 419/HTML error
+                },
+                body: jsonBody // Enviamos el JSON
+            });
+
+            // Intentamos parsear la respuesta como JSON, incluso si hay error
+            const result = await response.json();
+
+            if (!response.ok) {
+                const errorMsg = result.message || 'Error de red o de servidor.';
+                
+                if (result.errors) {
+                     const firstError = Object.values(result.errors).flat()[0];
+                     throw new Error(firstError || errorMsg);
+                }
+                throw new Error(errorMsg);
+            }
+
+            // 5. Éxito: limpiar la interfaz y notificar al usuario
+            listaVenta = [];
+            renderTabla();
+            mostrarProductoUI({}); 
+            
+            alert(`✅ Venta registrada con éxito. ID: ${result.venta_id}`);
+
+        } catch (error) {
+            console.error('Error al registrar la venta:', error);
+            // Si el error fue el HTML, mostramos el error genérico
+            if (error.message.includes('Unexpected token')) {
+                 alert('❌ Error de Sesión/Seguridad. Por favor, recargue la página (F5) e intente de nuevo.');
+            } else {
+                 alert('❌ Error al procesar la venta: ' + error.message);
+            }
+        }
+    }
+
 
     // ========================================================
     // Eventos
     // ========================================================
     
-    // El click en el input principal fue eliminado para dejar que el submit maneje el flujo.
+    // CORRECCIÓN: El formulario unificado maneja ambas lógicas
     if (formBuscarProducto) {
         formBuscarProducto.addEventListener('submit', async function(e) {
-            e.preventDefault(); // Siempre prevenimos el submit para controlar el flujo
-            
+            e.preventDefault(); 
             const query = inputCodigo.value.trim();
             
             // Lógica de Escaneo Rápido (Prioridad 1)
-            // Si el valor parece ser un CÓDIGO DE BARRAS (solo números y >= 10 dígitos), 
             if (!isNaN(query) && query.length >= 10) { 
-                 await agregarProducto(query, 1); // Agrega directamente
+                 await agregarProducto(query, 1); 
             } 
             // Búsqueda por Nombre / Menú (Prioridad 2)
             else if (query.length > 0) {
-                 // Abrimos el modal con la búsqueda AJAX
                  buscarProductoPorNombre(query);
             } else {
-                 // Si está vacío
                  alert('Por favor, ingrese un nombre o código para buscar.');
             }
         });
@@ -265,25 +336,22 @@ document.addEventListener('DOMContentLoaded', async function () {
         modalMenuBody.addEventListener('click', async function(e) {
             const card = e.target.closest('.producto-card');
             if (card) {
-                const codigo = card.dataset.codigoBarras; // Captura el código de barras
+                const codigo = card.dataset.codigoBarras;
                 if (codigo) {
-                    // Clic en el menú -> mostrar detalles en el Modal 2
                     await window.mostrarDetallesProducto(codigo);
                 }
             }
         });
         
-        // 2. 🚨 Manejar el submit del formulario interno (formBuscarEnMenu)
+        // 2. Manejar el submit del formulario interno (formBuscarEnMenu)
         modalMenuBody.addEventListener('submit', function(e) {
-            // Buscamos si el evento de submit viene del formulario interno del menú
             if (e.target.id === 'formBuscarEnMenu') {
-                e.preventDefault(); // <-- ¡CRUCIAL! Evita que el navegador recargue la página.
+                e.preventDefault(); 
                 
                 const input = e.target.querySelector('#inputBuscarEnMenu');
                 const query = input ? input.value : '';
                 
                 if (query.length > 0) {
-                    // Si hay query, llamamos a la función AJAX para recargar el cuerpo del modal
                     buscarProductoPorNombre(query);
                 }
             }
@@ -302,7 +370,6 @@ document.addEventListener('DOMContentLoaded', async function () {
                 return;
             }
 
-            // Aquí SÍ usamos el código de barras para agregar directamente
             await agregarProducto(codigo, cantidad);
             modalManual?.hide();
             formAgregarManual.reset();
@@ -314,6 +381,19 @@ document.addEventListener('DOMContentLoaded', async function () {
         modalElement.addEventListener('shown.bs.modal', function () {
             inputCodigoManual.focus();
         });
+    }
+
+    // Evento para el botón "Total" (ABRE el modal de pago)
+    if (modalPagoElement) {
+        modalPagoElement.addEventListener('show.bs.modal', function () {
+            const totalActual = totalSpan.textContent;
+            modalTotalPagar.textContent = totalActual;
+        });
+    }
+
+    // Evento para el botón "Confirmar y Cobrar" (ENVÍA la venta)
+    if (btnConfirmarVenta) {
+        btnConfirmarVenta.addEventListener('click', confirmarVenta);
     }
 
 });

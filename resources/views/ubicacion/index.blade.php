@@ -2,6 +2,7 @@
 
 @section('content')
 <style>
+    /* ... (Estilos CSS se mantienen igual) ... */
     .card-soft {
         border: 0;
         border-radius: 14px;
@@ -90,10 +91,10 @@
                                                 <form action="{{ route('pasillo.destroy', $pasillo->id) }}"
                                                       method="POST"
                                                       onsubmit="return confirm('¿Eliminar este pasillo?')">
-                                                    @csrf @method('DELETE')
-                                                    <button class="btn btn-danger btn-sm rounded-pill shadow-sm" type="submit">
-                                                        <i class="fa-regular fa-trash-can"></i>
-                                                    </button>
+                                                     @csrf @method('DELETE')
+                                                     <button class="btn btn-danger btn-sm rounded-pill shadow-sm" type="submit">
+                                                         <i class="fa-regular fa-trash-can"></i>
+                                                     </button>
                                                 </form>
                                             </div>
                                         </td>
@@ -235,33 +236,35 @@
 
 </div>
 
-{{-- MODALES --}}
-@include('pasillo.create', ['id' => 'createPasilloModal'])
-@include('nivel.create', ['id' => 'createNivelModal', 'pasillos' => $pasillos])
-@include('ubicacion.create', ['id' => 'createUbicacionModal', 'productos' => $productos'])
+{{-- BLOQUE DE MODALES (AÑADIDO AL FINAL DE LA VISTA) --}}
+@push('modals')
+    @include('pasillo.create', ['id' => 'createPasilloModal'])
+    @include('nivel.create', ['id' => 'createNivelModal', 'pasillos' => $pasillos])
+    @include('ubicacion.create', ['id' => 'createUbicacionModal', 'productos' => $productos])
 
-@if(isset($pasillos))
-    @foreach($pasillos as $pasillo)
-        @include('pasillo.edit', ['pasillo' => $pasillo, 'id' => 'editPasilloModal'.$pasillo->id])
-    @endforeach
-@endif
+    @if(isset($pasillos))
+        @foreach($pasillos as $pasillo)
+            @include('pasillo.edit', ['pasillo' => $pasillo, 'id' => 'editPasilloModal'.$pasillo->id])
+        @endforeach
+    @endif
 
-@if(isset($niveles))
-    @foreach($niveles as $nivel)
-        @include('nivel.edit', ['nivel' => $nivel, 'id' => 'editNivelModal'.$nivel->id, 'pasillos' => $pasillos])
-    @endforeach
-@endif
+    @if(isset($niveles))
+        @foreach($niveles as $nivel)
+            @include('nivel.edit', ['nivel' => $nivel, 'id' => 'editNivelModal'.$nivel->id, 'pasillos' => $pasillos])
+        @endforeach
+    @endif
 
-@if(isset($ubicaciones))
-    @foreach($ubicaciones as $ubicacion)
-        @include('ubicacion.edit', [
-            'ubicacion' => $ubicacion, 
-            'id' => 'editModalUbicacion'.$ubicacion->id,
-            'productos' => $productos,
-            'niveles' => $niveles,
-            'pasillos' => $pasillos
-        ])
-    @endforeach
-@endif
+    @if(isset($ubicaciones))
+        @foreach($ubicaciones as $ubicacion)
+            @include('ubicacion.edit', [
+                'ubicacion' => $ubicacion, 
+                'id' => 'editModalUbicacion'.$ubicacion->id,
+                'productos' => $productos,
+                'niveles' => $niveles,
+                'pasillos' => $pasillos
+            ])
+        @endforeach
+    @endif
+@endpush
 
 @endsection

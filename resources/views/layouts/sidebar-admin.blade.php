@@ -303,6 +303,7 @@
 </div>
 
     @stack('scripts')
+    @stack('modals')
 
 
 </body>
