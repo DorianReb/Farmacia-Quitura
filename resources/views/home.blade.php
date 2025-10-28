@@ -1,6 +1,9 @@
 @extends('layouts.sidebar-admin') {{-- o el layout de admin que uses --}}
 
 @section('content')
+    @php
+        $esVendedor = auth()->user()?->rol === 'Vendedor';
+    @endphp
     <style>
         /* Pequeños toques visuales para el dashboard */
         .kpi {
@@ -72,7 +75,7 @@
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="section-title m-0">PRÓXIMOS 5 PRODUCTOS A CADUCAR</h6>
-                <a href={{route("producto.index")}} class="btn btn-primary btn-sm">
+                <a href="{{route('producto.index')}}" class="btn btn-primary btn-sm">
                     Ver todos los productos
                 </a>
             </div>
@@ -102,9 +105,11 @@
                                     <a href="{{ route('lote.index', $item->id) }}" class="btn btn-outline-secondary" title="Ver">
                                         <i class="fa-regular fa-eye"></i>
                                     </a>
-                                    <a href="{{ route('lote.edit', $item->id) }}" class="btn btn-outline-secondary" title="Editar">
-                                        <i class="fa-regular fa-pen-to-square"></i>
-                                    </a>
+                                    @unless($esVendedor)
+                                        <a href="{{ route('lote.edit', $item->id) }}" class="btn btn-outline-secondary" title="Editar">
+                                            <i class="fa-regular fa-pen-to-square"></i>
+                                        </a>
+                                    @endunless
                                     <a href="{{ route('venta.index', ['producto' => $item->producto_id ?? null]) }}" class="btn btn-outline-secondary" title="Venta rápida">
                                         <i class="fa-solid fa-bolt"></i>
                                     </a>

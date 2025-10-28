@@ -11,6 +11,8 @@ use App\Http\Controllers\PromocionController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\SolicitudController;
 use App\Http\Controllers\AsignaPromocionController;
+use App\Http\Controllers\AsignaComponenteController;
+
 
 Route::get('/', function () {
     return view('auth.login');
@@ -78,6 +80,7 @@ Route::middleware(['auth', 'estado', 'role:Administrador,Superadmin'])->group(fu
     Route::resource('ubicacion', AsignaUbicacionController::class);
     Route::resource('promocion', PromocionController::class);
     Route::resource('asignapromocion', AsignaPromocionController::class);
+    Route::resource('asigna_componentes', AsignaComponenteController::class);
     Route::resource('pasillo', App\Http\Controllers\PasilloController::class)->except(['index', 'show', 'create', 'edit']);
     Route::resource('nivel', App\Http\Controllers\NivelController::class)->except(['index', 'show', 'create', 'edit']);
 });

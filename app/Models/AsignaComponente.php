@@ -7,11 +7,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class AsignaComponente extends Model
 {
-    //
-    use SoftDeletes;
+    use SoftDeletes; // <-- si tu tabla NO tiene deleted_at, quítalo
+
     protected $table = 'asigna_componentes';
     protected $primaryKey = 'id';
     public $timestamps = true;
+
     protected $fillable = [
         'producto_id',
         'nombre_cientifico_id',
@@ -21,13 +22,24 @@ class AsignaComponente extends Model
         'base_unidad_id',
     ];
 
-    public function asignaComponentes()
+    // Relaciones correctas
+    public function producto()
     {
-        return $this->hasMany(AsignaComponente::class, 'producto_id');
+        return $this->belongsTo(Producto::class, 'producto_id');
     }
 
-    public function nombreCientifico()
+    public function componente()
     {
         return $this->belongsTo(NombreCientifico::class, 'nombre_cientifico_id');
+    }
+
+    public function fuerzaUnidad()
+    {
+        return $this->belongsTo(UnidadMedida::class, 'fuerza_unidad_id');
+    }
+
+    public function baseUnidad()
+    {
+        return $this->belongsTo(UnidadMedida::class, 'base_unidad_id');
     }
 }

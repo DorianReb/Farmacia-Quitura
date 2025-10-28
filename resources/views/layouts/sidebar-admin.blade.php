@@ -156,10 +156,16 @@
                                     </a>
                                 </li>
                                 <li class="nav-item">
+                                    <a class="nav-link" href="{{ route('asigna_componentes.index') }}">
+                                    <i class="fa-solid fa-diagram-project"></i><span class="ms-2">Asignar componentes</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
                                     <a class="nav-link" href="{{ route('ubicacion.index') }}">
                                         <i class="fa-solid fa-location-dot"></i><span class="ms-2">Ubicaciones</span>
                                     </a>
                                 </li>
+
                             </ul>
                         </div>
                     </li>
