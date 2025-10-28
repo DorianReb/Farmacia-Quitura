@@ -3,7 +3,6 @@
 namespace App\Models;
 
 
-use App\Models\AsignaPromocion;
 use App\Models\Promocion;
 use App\Models\Lote;
 use Illuminate\Http\Request;
