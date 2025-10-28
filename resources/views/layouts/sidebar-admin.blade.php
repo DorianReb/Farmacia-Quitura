@@ -119,7 +119,7 @@
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('venta.historial') ? 'active' : '' }}"
                                    href="{{ route('venta.historial') }}">
-                                    <i class="fa-regular fa-clock"></i><span class="ms-2">Historial de ventas</span>
+                                    <i class="fa-regular fa-clock"></i><span class="ms-2">Historial de Transacciones</span>
                                 </a>
                             </li>
                         </ul>
