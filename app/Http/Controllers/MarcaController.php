@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Marca;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+
 
 class MarcaController extends Controller
 {

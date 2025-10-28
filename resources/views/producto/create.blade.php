@@ -8,6 +8,7 @@
       <div class="modal-body">
         <form action="{{ route('producto.store') }}" method="POST" enctype="multipart/form-data">
           @csrf
+          
           <div class="row mb-3">
             <div class="col-md-4">
               <label for="nombre_comercial" class="form-label">Nombre del producto</label>
@@ -92,6 +93,15 @@
             </div>
           </div>
 
+          <!-- Nueva fila con existencias -->
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <label for="existencias" class="form-label">Existencias</label>
+              <input type="number" class="form-control" id="existencias" name="existencias" value="{{ old('existencias') }}" placeholder="Cantidad en inventario">
+            </div>
+            <div class="col-md-8"></div>
+          </div>
+
           <div class="row mb-3">
             <div class="col-md-4">
               <label for="alt_imagen" class="form-label">ALT Imagen</label>
@@ -118,3 +128,13 @@
     </div>
   </div>
 </div>
+
+@if ($errors->any())
+  <div class="alert alert-danger">
+    <ul class="mb-0">
+      @foreach ($errors->all() as $error)
+        <li>{{ $error }}</li>
+      @endforeach
+    </ul>
+  </div>
+@endif

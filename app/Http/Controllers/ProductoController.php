@@ -37,9 +37,9 @@ class ProductoController extends Controller
     {
         $request->validate([
             'marca_id' => 'required|exists:marcas,id',
-            'forma_farmaceutica_id' => 'required|exists:forma_farmaceuticas,id',
+            'forma_farmaceutica_id' => 'required|exists:formas_farmaceuticas,id',
             'presentacion_id' => 'required|exists:presentaciones,id',
-            'unidad_medida_id' => 'required|exists:unidad_medidas,id',
+            'unidad_medida_id' => 'required|exists:unidades_medida,id',
             'categoria_id' => 'required|exists:categorias,id',
             'nombre_comercial' => 'required|string|max:255',
             'descripcion' => 'nullable|string',
@@ -61,7 +61,7 @@ class ProductoController extends Controller
 
         Producto::create($data);
 
-        return redirect()->route('productos.index')->with('success', 'Producto creado correctamente')->with('from_modal', 'create_producto');
+        return redirect()->route('producto.index')->with('success', 'Producto creado correctamente')->with('from_modal', 'create_producto');
     }
 
     public function edit(Producto $producto)
@@ -72,16 +72,16 @@ class ProductoController extends Controller
         $unidades = UnidadMedida::all();
         $categorias = Categoria::all();
 
-        return view('productos.edit', compact('producto', 'marcas', 'formas', 'presentaciones', 'unidades', 'categorias'));
+        return view('producto.edit', compact('producto', 'marcas', 'formas', 'presentaciones', 'unidades', 'categorias'));
     }
 
     public function update(Request $request, Producto $producto)
     {
         $request->validate([
             'marca_id' => 'required|exists:marcas,id',
-            'forma_farmaceutica_id' => 'required|exists:forma_farmaceuticas,id',
+            'forma_farmaceutica_id' => 'required|exists:formas_farmaceuticas,id',
             'presentacion_id' => 'required|exists:presentaciones,id',
-            'unidad_medida_id' => 'required|exists:unidad_medidas,id',
+            'unidad_medida_id' => 'required|exists:unidades_medida,id',
             'categoria_id' => 'required|exists:categorias,id',
             'nombre_comercial' => 'required|string|max:255',
             'descripcion' => 'nullable|string',
@@ -103,13 +103,13 @@ class ProductoController extends Controller
 
         $producto->update($data);
 
-        return redirect()->route('productos.index')->with('success', 'Producto actualizado correctamente')->with('from_modal', 'edit_producto')->with('edit_id', $producto->id);
+        return redirect()->route('producto.index')->with('success', 'Producto actualizado correctamente')->with('from_modal', 'edit_producto')->with('edit_id', $producto->id);
     }
 
     public function destroy(Producto $producto)
     {
         $producto->delete();
-        return redirect()->route('productos.index')->with('success', 'Producto eliminado correctamente');
+        return redirect()->route('producto.index')->with('success', 'Producto eliminado correctamente');
     }
 
     public function lotes()

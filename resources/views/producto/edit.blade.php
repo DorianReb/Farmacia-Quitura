@@ -9,6 +9,7 @@
         <form action="{{ route('producto.update', $producto->id) }}" method="POST" enctype="multipart/form-data">
           @csrf
           @method('PUT')
+
           <div class="row mb-3">
             <div class="col-md-4">
               <label for="nombre_comercial_{{ $producto->id }}" class="form-label">Nombre del producto</label>
@@ -107,7 +108,10 @@
                 @endforeach
               </select>
             </div>
-            <div class="col-md-4"></div>
+            <div class="col-md-4">
+              <label for="existencias_{{ $producto->id }}" class="form-label">Existencias actuales</label>
+              <input type="number" class="form-control" id="existencias_{{ $producto->id }}" name="existencias" value="{{ old('existencias', $producto->existencias) }}" min="0">
+            </div>
           </div>
 
           <div class="modal-footer d-flex justify-content-end">
