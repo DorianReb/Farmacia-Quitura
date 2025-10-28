@@ -24,7 +24,9 @@ class PromocionController extends Controller
         }
 
         $promociones = $query->orderBy('fecha_inicio', 'desc')->paginate(10);
-        $usuarios = \App\Models\User::all();
+        $usuarios = \App\Models\User::whereIn('rol', ['Administrador', 'Superadmin'])
+                                     ->orderBy('nombre')
+                                     ->get();
 
         // Asignaciones con relaciones cargadas
         $asignaciones = AsignaPromocion::with(['promocion', 'lote.producto'])->paginate(10);
@@ -42,7 +44,7 @@ class PromocionController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'porcentaje' => 'required|numeric|min:10|max:40',
+            'porcentaje' => 'required|numeric|min:15|max:40',
             'fecha_inicio' => 'required|date',
             'fecha_fin' => 'required|date|after:fecha_inicio',
             'autorizada_por' => 'required|string|max:200',
@@ -72,7 +74,7 @@ class PromocionController extends Controller
     public function update(Request $request, Promocion $promocion)
     {
         $request->validate([
-            'porcentaje' => 'required|numeric|min:10|max:40',
+            'porcentaje' => 'required|numeric|min:15|max:40',
             'fecha_inicio' => 'required|date',
             'fecha_fin' => 'required|date|after:fecha_inicio',
             'autorizada_por' => 'required|string|max:200',
@@ -93,5 +95,15 @@ class PromocionController extends Controller
 
         return redirect()->route('promocion.index')
                          ->with('success', 'Promoción eliminada correctamente');
+    }
+
+    public function __construct()
+    {
+        // Aplica el middleware 'role' a todos los métodos excepto 'index'.
+        // Asumimos que tu middleware se llama 'role' y que acepta roles separados por coma o barra.
+        $this->middleware('role:Administrador,Superadmin')->except(['index']);
+        
+        // Si tienes un método 'create' separado para cargar la vista:
+        // $this->middleware('role:Administrador,Superadmin')->except(['index', 'show']); 
     }
 }
