@@ -8,7 +8,7 @@
     cursor: pointer;
     transition: all 0.2s ease;
     background: #fff;
-    height: 100%; /* Para que todas las tarjetas tengan la misma altura */
+    height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -28,7 +28,6 @@
     font-weight: 600;
     margin: 0;
     color: #333;
-    /* Evita que el texto se desborde */
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
@@ -37,26 +36,30 @@
 }
 </style>
 
-<form id="formBuscarEnMenu" class="mb-3">
+{{-- 🔍 Barra de búsqueda --}}
+<form id="formBuscarEnMenu" class="mb-3" method="GET" action="{{ route('producto.menu') }}">
     <div class="input-group">
         <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
         <input type="search" id="inputBuscarEnMenu" class="form-control" 
+               name="q"
                placeholder="Buscar producto en el menú..." 
                value="{{ request('q') }}">
         <button class="btn btn-primary" type="submit">Buscar</button>
     </div>
 </form>
 
+{{-- 🛒 Grid de productos --}}
 <div class="row g-3">
     @forelse($productos as $producto)
         <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-            
-            <div class="producto-card" data-codigo-barras="{{ $producto->codigo_barras }}">
+            <div class="producto-card" 
+                 data-id="{{ $producto->id }}"
+                 data-nombre="{{ $producto->nombre_comercial }}"
+                 data-precio="{{ $producto->precio ?? 0 }}">
                 <img src="{{ $producto->imagen_url ?? 'https://via.placeholder.com/150.png?text=Producto' }}" 
                      alt="{{ $producto->nombre_comercial }}">
                 <p>{{ $producto->nombre_comercial }}</p>
             </div>
-
         </div>
     @empty
         <div class="col-12">
@@ -64,3 +67,36 @@
         </div>
     @endforelse
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    // 🟦 1. La barra de búsqueda redirige normalmente (GET)
+    const formBuscar = document.getElementById('formBuscarEnMenu');
+    formBuscar.addEventListener('submit', function(e) {
+        // Deja que el formulario se envíe normalmente al controlador
+        // No hacemos preventDefault aquí
+    });
+
+    // 🟩 2. Click en producto -> lo agrega a la lista de venta
+    const productos = document.querySelectorAll('.producto-card');
+    productos.forEach(card => {
+        card.addEventListener('click', () => {
+            const id = card.dataset.id;
+            const nombre = card.dataset.nombre;
+            const precio = parseFloat(card.dataset.precio);
+
+            // Aquí puedes personalizar qué hace al añadir
+            agregarAListaDeVenta({ id, nombre, precio });
+        });
+    });
+
+    // 🛍️ Función que añade un producto a la lista de venta (ejemplo básico)
+    function agregarAListaDeVenta(producto) {
+        // Puedes reemplazar esto con un fetch/AJAX o manipular tu tabla directamente
+        console.log('Producto agregado a venta:', producto);
+        alert(`Producto añadido: ${producto.nombre} - $${producto.precio.toFixed(2)}`);
+    }
+
+});
+</script>

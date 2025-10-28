@@ -26,6 +26,7 @@ class LoteController extends Controller
         $lotes = $query->orderByDesc('created_at')->paginate(10);
         $productos = \App\Models\Producto::orderBy('nombre_comercial')->get();
 
+
         return view('lote.index', compact('lotes', 'productos'));
     }
 
@@ -59,12 +60,9 @@ class LoteController extends Controller
     /**
      * Actualiza un lote existente.
      */
-    public function update(Request $request, Lote $lote)
+    public function update(Request $request, $id)
     {
-        $request->merge([
-            'from_modal' => 'edit_lote',
-            'edit_id' => $lote->id
-        ]);
+        $lote = Lote::findOrFail($id);
 
         $validated = $request->validate([
             'producto_id' => 'required|exists:productos,id',
@@ -81,11 +79,9 @@ class LoteController extends Controller
             ->with('success', 'Lote actualizado correctamente.');
     }
 
-    /**
-     * Elimina un lote (soft delete).
-     */
-    public function destroy(Lote $lote)
+    public function destroy($id)
     {
+        $lote = Lote::findOrFail($id);
         $lote->delete();
 
         return redirect()->route('lote.index')

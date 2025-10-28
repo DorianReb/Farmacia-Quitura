@@ -76,6 +76,8 @@ Route::middleware(['auth', 'estado', 'role:Administrador,Superadmin'])->group(fu
     Route::resource('lote', App\Http\Controllers\LoteController::class);
     Route::resource('ubicacion', AsignaUbicacionController::class);
     Route::resource('promocion', PromocionController::class);
+    Route::resource('pasillo', App\Http\Controllers\PasilloController::class)->except(['index', 'show', 'create', 'edit']);
+    Route::resource('nivel', App\Http\Controllers\NivelController::class)->except(['index', 'show', 'create', 'edit']);
 });
 
 /*

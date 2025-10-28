@@ -42,7 +42,8 @@ class VentaController extends Controller
             'presentacion',
             'formaFarmaceutica',
             'categoria',
-            'asignaUbicaciones.nivel.pasillo',
+            // OJO: Cargamos la relación completa: asignaUbicaciones -> nivel -> pasillo
+            'asignaUbicaciones.nivel.pasillo', 
             'asignaComponentes.nombreCientifico'
         ])
         ->where('codigo_barras', $codigo)
@@ -52,28 +53,46 @@ class VentaController extends Controller
             return response()->json(['message' => 'Producto no encontrado'], 404);
         }
 
-        // Calcular existencias
+        // ... (Tu código para calcular existencias y ordenar lotes) ...
         $producto->existencias_calculadas = $producto->lotes->sum('cantidad');
-
-        // Ordenar lotes por fecha de caducidad (FEFO)
         $producto->lotes = $producto->lotes->sortBy('fecha_caducidad')->values();
 
-        // Asegurar estructura del JSON
+        // --- INICIO DEL PARCHE DE UBICACIONES Y COMPONENTES ---
+
+        // Sincronizamos las colecciones (ya estaba bien)
         $producto->asigna_ubicaciones = $producto->asignaUbicaciones ?? collect();
         $producto->asigna_componentes = $producto->asignaComponentes ?? collect();
         $producto->forma_farmaceutica = $producto->formaFarmaceutica ?? null;
-        //Extraer nombre científico desde la primera asignación si existe
+
+        // Extraer Nombre Científico (ya estaba bien)
         $primerComponente = $producto->asigna_componentes->first();
         $producto->nombre_cientifico = $primerComponente?->nombreCientifico?->nombre ?? null;
 
-        //  Extraer ubicación (pasillo/nivel)
-        $primeraUbicacion = $producto->asigna_ubicaciones->first();
-        $nivel = $primeraUbicacion?->nivel?->nombre;
-        $pasillo = $primeraUbicacion?->nivel?->pasillo?->nombre;
-        $producto->ubicacion_texto = $nivel && $pasillo ? "{$pasillo} / {$nivel}" : ($nivel ?? $pasillo ?? null);
+
+        // --- LÓGICA DE FORMATEO DE UBICACIONES (LA CLAVE) ---
+        $ubicacionesFormateadas = [];
+        
+        foreach ($producto->asigna_ubicaciones as $asignacion) {
+            
+            // Usamos el accesor ->nombre del modelo Nivel que ya trae el Pasillo::codigo (ej: P01 - Nivel 1)
+            $nivelNombreCompleto = $asignacion->nivel?->nombre;
+            
+            if ($nivelNombreCompleto) {
+                $ubicacionesFormateadas[] = $nivelNombreCompleto;
+            }
+        }
+
+        // Creamos la propiedad simple para el JSON
+        $producto->ubicaciones_texto = implode(', ', array_unique($ubicacionesFormateadas));
+        
+        // Finalizamos limpiando las relaciones complejas para un JSON más limpio
+        $producto->unsetRelation('asignaUbicaciones');
+        $producto->unsetRelation('asignaComponentes');
+
 
         return response()->json($producto);
     }
+    // ...
 
 
 
@@ -197,38 +216,6 @@ class VentaController extends Controller
         $ventas->setCollection($collection);
 
         return view('venta.historial', compact('ventas','q','desde','hasta'));
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(Venta $venta)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Venta $venta)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Venta $venta)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Venta $venta)
-    {
-        //
     }
 
 }

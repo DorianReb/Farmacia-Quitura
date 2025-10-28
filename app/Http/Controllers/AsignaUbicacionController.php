@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AsignaUbicacion;
 use App\Models\Producto;
 use App\Models\Nivel;
+use App\Models\Pasillo; // ⬅️ AGREGADO
 use Illuminate\Http\Request;
 
 class AsignaUbicacionController extends Controller
@@ -24,10 +25,12 @@ class AsignaUbicacionController extends Controller
 
         $ubicaciones = $query->paginate(15);
 
+        // Colecciones necesarias para los SELECTS y las mini-tablas
         $productos = Producto::all();
         $niveles = Nivel::all();
+        $pasillos = Pasillo::all(); // ⬅️ AGREGADO
 
-        return view('ubicacion.index', compact('ubicaciones', 'productos', 'niveles'));
+        return view('ubicacion.index', compact('ubicaciones', 'productos', 'niveles', 'pasillos')); // ⬅️ PASANDO PASILLOS
     }
 
     /**
@@ -35,6 +38,7 @@ class AsignaUbicacionController extends Controller
      */
     public function store(Request $request)
     {
+        // El resto de la lógica de store es correcta.
         $request->validate([
             'producto_id' => 'required|exists:productos,id',
             'nivel_id' => 'required|exists:niveles,id',
@@ -50,6 +54,7 @@ class AsignaUbicacionController extends Controller
      */
     public function update(Request $request, AsignaUbicacion $asignaUbicacion)
     {
+        // El resto de la lógica de update es correcta.
         $request->validate([
             'producto_id' => 'required|exists:productos,id',
             'nivel_id' => 'required|exists:niveles,id',
@@ -65,9 +70,9 @@ class AsignaUbicacionController extends Controller
      */
     public function destroy(AsignaUbicacion $asignaUbicacion)
     {
+        // El resto de la lógica de destroy es correcta.
         $asignaUbicacion->delete();
 
         return redirect()->route('ubicacion.index')->with('success', 'Asignación eliminada correctamente.');
     }
 }
-    
