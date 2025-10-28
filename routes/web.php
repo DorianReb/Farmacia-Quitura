@@ -95,6 +95,9 @@ Route::middleware(['auth', 'estado', 'role:Vendedor,Administrador,Superadmin'])-
     Route::get('/venta/buscarProducto/{codigo}', [VentaController::class, 'buscarProductoPorCodigo']);
     Route::post('/venta/store', [VentaController::class, 'store'])->name('venta.store');
     Route::get('/venta/historial', [VentaController::class, 'historial'])->name('venta.historial');
+    Route::resource('pasillos', PasilloController::class)->names('pasillo');
+    Route::resource('asignapromocion', AsignaPromocionController::class)->names('asignapromocion')->only([
+    'index', 'create', 'store', 'destroy']);
 
     // Ruta temporal de dashboard vendedor (nombre intacto)
     Route::view('/dashboard/vendedor', 'vendedor.dashboard')->name('vendedor.dashboard');

@@ -3,153 +3,169 @@
 @section('content')
     <style>
         .card-soft{border:0;border-radius:14px;box-shadow:0 8px 20px rgba(16,24,40,.06);}
-        .dt-control{cursor:pointer;text-align:center;width:42px}
-        .dt-control i{transition:transform .2s ease}
-        tr.shown .dt-control i{transform:rotate(90deg)}
+        .table-hover tbody tr:hover{background:#f7f9ff;}
+        .accordion-button{font-weight:700}
+        .btn-icon{padding:.45rem .6rem;border-radius:999px;display:inline-flex;align-items:center;justify-content:center}
     </style>
 
-    <div class="container-xxl">
-        {{-- Encabezado --}}
-        <div class="row mb-2">
-            <div class="col-12 text-center">
-                <div class="bg-azul-marino text-white rounded-3 px-3 py-2 d-inline-flex align-items-center gap-2 shadow-sm">
-                    <i class="fa-solid fa-receipt"></i>
-                    <h1 class="h4 m-0">Historial de ventas</h1>
-                </div>
+    @php($q = $q ?? '')
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <div class="bg-azul-marino text-white rounded-3 px-3 py-2 d-inline-flex align-items-center gap-2 shadow-sm">
+                <i class="fa-solid fa-diagram-project"></i>
+                <h1 class="h5 m-0">Asignar componentes</h1>
             </div>
+            @if($q !== '')
+                <span class="badge bg-secondary">Filtro: “{{ $q }}”</span>
+            @endif
         </div>
 
-        {{-- Filtros por fecha + búsqueda --}}
-        <form method="GET" action="{{ route('venta.historial') }}" class="row g-2 align-items-end mb-3">
-            <div class="col-12 col-md-3">
-                <label class="form-label">Desde</label>
-                <input type="date" name="desde" value="{{ $desde }}" class="form-control">
-            </div>
-            <div class="col-12 col-md-3">
-                <label class="form-label">Hasta</label>
-                <input type="date" name="hasta" value="{{ $hasta }}" class="form-control">
-            </div>
-            <div class="col-12 col-md-4">
-                <label class="form-label">Buscar (folio o usuario)</label>
-                <div class="input-group">
-                    <input type="search" name="q" value="{{ $q }}" class="form-control" placeholder="Folio o nombre…">
-                    @if($q || $desde || $hasta)
-                        <a href="{{ route('venta.historial') }}" class="btn btn-outline-secondary">
-                            <i class="fa-regular fa-circle-xmark"></i>
-                        </a>
-                    @endif
-                    <button class="btn btn-success"><i class="fa-solid fa-search"></i></button>
-                </div>
-            </div>
-        </form>
-
-        {{-- Tabla --}}
-        <div class="card card-soft">
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table id="tablaHistorial" class="table table-hover align-middle w-100">
-                        <thead class="bg-azul-marino text-white">
-                        <tr>
-                            <th></th>
-                            <th>Folio</th>
-                            <th>Fecha</th>
-                            <th>Usuario</th>
-                            <th class="text-end">Total</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        @foreach($ventas as $venta)
-                            @php
-                                $usuario = trim(($venta->usuario->nombre ?? '').' '.($venta->usuario->apellido_paterno ?? '').' '.($venta->usuario->apellido_materno ?? ''));
-                                $detalles = $venta->detalles->map(fn($d)=>[
-                                    'producto'  => $d->producto->nombre ?? '—',
-                                    'lote'      => $d->lote->numero ?? null,
-                                    'precio'    => (float)$d->precio_unitario,
-                                    'descuento' => (float)$d->descuento, // %
-                                    'cantidad'  => (int)$d->cantidad,
-                                    'subtotal'  => (float)$d->subtotal,
-                                ]);
-                            @endphp
-                            <tr data-detalles='@json($detalles)'>
-                                <td class="dt-control"><i class="fa-solid fa-angle-right"></i></td>
-                                <td>#{{ $venta->id }}</td>
-                                <td>{{ \Carbon\Carbon::parse($venta->fecha)->format('d/m/Y H:i') }}</td>
-                                <td>{{ $usuario }}</td>
-                                <td class="text-end">${{ number_format($venta->total, 2) }}</td>
-                            </tr>
-                        @endforeach
-                        </tbody>
-                    </table>
-                </div>
-
-                {{-- paginación de Laravel --}}
-                <div class="mt-3 d-flex justify-content-end">
-                    {{ $ventas->links('pagination::bootstrap-5') }}
-                </div>
-            </div>
-        </div>
+        {{-- Botón abre modal crear (igual que Categorías: success + circular icon-only) --}}
+        <button type="button"
+                class="btn btn-success btn-icon shadow-sm"
+                data-bs-toggle="modal"
+                data-bs-target="#createAsignaComponenteModal"
+                title="Agregar nuevo">
+            <i class="fa-solid fa-plus"></i>
+        </button>
     </div>
 
-    {{-- DataTables 2 (vanilla, SIN jQuery) --}}
-    <link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-2.1.7/datatables.min.css"/>
-    <script src="https://cdn.datatables.net/v/bs5/dt-2.1.7/datatables.min.js"></script>
+    {{-- Buscador: Buscar = success, Limpiar = outline-secondary --}}
+    <form class="row g-2 mb-3" method="get" action="{{ route('asigna_componentes.index') }}">
+        <div class="col-12 col-md-6">
+            <input type="text" name="q" value="{{ $q }}" class="form-control"
+                   placeholder="Busca por producto (nombre comercial) o por nombre científico…">
+        </div>
+        <div class="col-6 col-md-3 d-grid">
+            <button class="btn btn-success" data-bs-toggle="tooltip" title="Buscar">
+                <i class="fa-solid fa-search"></i> <span class="d-none d-sm-inline">Buscar</span>
+            </button>
+        </div>
+        <div class="col-6 col-md-3 d-grid">
+            <a href="{{ route('asigna_componentes.index') }}" class="btn btn-outline-secondary" data-bs-toggle="tooltip" title="Limpiar búsqueda">
+                <i class="fa-regular fa-circle-xmark"></i> <span class="d-none d-sm-inline">Limpiar</span>
+            </a>
+        </div>
+    </form>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const nf = new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN'});
+    {{-- Alert éxito --}}
+    @if(session('success'))
+        <div class="alert alert-success shadow-sm">{{ session('success') }}</div>
+    @endif
 
-            function detalleHTML(detalles){
-                const rows = detalles.map(d => `
-            <tr>
-                <td class="fw-semibold">${d.producto ?? '—'} ${d.lote ? `<span class="badge bg-secondary ms-2">Lote ${d.lote}</span>`:''}</td>
-                <td class="text-end">${nf.format(d.precio ?? 0)}</td>
-                <td class="text-end">${(d.descuento ?? 0)}%</td>
-                <td class="text-end">${d.cantidad ?? 0}</td>
-                <td class="text-end">${nf.format(d.subtotal ?? 0)}</td>
-            </tr>
-        `).join('');
-                return `
-            <div class="p-2 ps-5">
-                <table class="table table-sm table-borderless m-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Producto</th>
-                            <th class="text-end">Precio</th>
-                            <th class="text-end">Desc.</th>
-                            <th class="text-end">Cant.</th>
-                            <th class="text-end">Subtotal</th>
-                        </tr>
-                    </thead>
-                    <tbody>${rows}</tbody>
-                </table>
-            </div>`;
-            }
+    {{-- Sin datos --}}
+    @if(($grupos ?? collect())->isEmpty())
+        <div class="alert alert-light border">
+            No hay asignaciones registradas @if($q) para “<strong>{{ $q }}</strong>” @endif.
+        </div>
+    @else
+        {{-- Acordeón por Producto (nombre_comercial) --}}
+        <div class="accordion" id="accProductos">
+            @foreach($grupos as $productoNombre => $asignaciones)
+                <div class="accordion-item mb-2 border-0 shadow-sm card-soft">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button {{ $loop->first && $q === '' ? '' : 'collapsed' }}" type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#p{{ $loop->index }}"
+                                aria-expanded="{{ $loop->first && $q === '' ? 'true' : 'false' }}"
+                                aria-controls="p{{ $loop->index }}">
+                            {{ $productoNombre }}
+                            <span class="ms-2 badge bg-primary">{{ $asignaciones->count() }}</span>
+                        </button>
+                    </h2>
 
-            const table = new DataTable('#tablaHistorial', {
-                paging: false,      // usamos paginación de Laravel
-                searching: false,   // filtros vienen del form GET
-                info: false,
-                order: [[2,'desc']], // por fecha
-                columnDefs: [
-                    { orderable:false, targets:0 },
-                    { className:'text-end', targets:4 },
-                ]
-            });
+                    <div id="p{{ $loop->index }}" class="accordion-collapse collapse {{ $loop->first && $q === '' ? 'show' : '' }}"
+                         data-bs-parent="#accProductos">
+                        <div class="accordion-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="bg-azul-marino text-white">
+                                    <tr>
+                                        <th style="width: 42%">Componente (Nombre científico)</th>
+                                        <th style="width: 38%">Fuerza / Base</th>
+                                        <th class="text-end" style="width: 20%">Acciones</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    @foreach($asignaciones as $row)
+                                        <tr>
+                                            <td class="fw-semibold">
+                                                {{ $row->componente->nombre ?? '—' }}
+                                            </td>
+                                            <td>
+                                                {{-- Ejemplo: 500 mg / 5 ml (sin ceros a la derecha) --}}
+                                                {{ rtrim(rtrim(number_format($row->fuerza_cantidad, 2, '.', ''), '0'), '.') }}
+                                                {{ $row->fuerzaUnidad->nombre ?? '' }}
+                                                /
+                                                {{ rtrim(rtrim(number_format($row->base_cantidad, 2, '.', ''), '0'), '.') }}
+                                                {{ $row->baseUnidad->nombre ?? '' }}
+                                            </td>
+                                            <td class="text-end">
+                                                {{-- Acciones: igual que Categorías (icon-only redondeadas) --}}
+                                                <div class="btn-group btn-group-sm" role="group">
+                                                    {{-- Editar (modal) --}}
+                                                    <button class="btn btn-warning shadow-sm rounded-pill btn-icon"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#editAsignaComponenteModal{{ $row->id }}"
+                                                            title="Editar">
+                                                        <i class="fa-regular fa-pen-to-square"></i>
+                                                    </button>
 
-            document.querySelector('#tablaHistorial tbody').addEventListener('click', (e)=>{
-                const cell = e.target.closest('td.dt-control');
-                if (!cell) return;
-                const tr  = cell.closest('tr');
-                const row = table.row(tr);
+                                                    {{-- Eliminar --}}
+                                                    <form action="{{ route('asigna_componentes.destroy', $row->id) }}"
+                                                          method="post" class="d-inline"
+                                                          onsubmit="return confirm('¿Eliminar esta asignación?')">
+                                                        @csrf @method('DELETE')
+                                                        <button class="btn btn-danger shadow-sm rounded-pill btn-icon" type="submit" title="Eliminar">
+                                                            <i class="fa-regular fa-trash-can"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
 
-                if (row.child.isShown()) {
-                    row.child.hide(); tr.classList.remove('shown');
-                } else {
-                    const detalles = JSON.parse(tr.dataset.detalles || '[]');
-                    row.child(detalleHTML(detalles)).show();
-                    tr.classList.add('shown');
-                }
-            });
-        });
-    </script>
+                                        {{-- Modal de edición (incluido por fila) --}}
+                                        @isset($productos, $componentes, $unidades)
+                                            @include('asigna_componentes.edit', [
+                                                'row' => $row,
+                                                'productos' => $productos,
+                                                'componentes' => $componentes,
+                                                'unidades' => $unidades
+                                            ])
+                                        @endisset
+                                    @endforeach
+                                    </tbody>
+                                </table>
+                            </div> {{-- /table-responsive --}}
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    @endif
+
+    {{-- Modal de creación --}}
+    @isset($productos, $componentes, $unidades)
+        @include('asigna_componentes.create', [
+            'productos' => $productos,
+            'componentes' => $componentes,
+            'unidades' => $unidades
+        ])
+    @endisset
+
+    {{-- Reabrir modal si hubo errores --}}
+    @if ($errors->any())
+        @if (session('from_modal') === 'create_asigna_componente')
+            <script>
+                document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal('#createAsignaComponenteModal').show());
+            </script>
+        @elseif (session('from_modal') === 'edit_asigna_componente' && session('edit_id'))
+            <script>
+                document.addEventListener('DOMContentLoaded', () => {
+                    const el = document.getElementById('editAsignaComponenteModal{{ session('edit_id') }}');
+                    if (el) new bootstrap.Modal(el).show();
+                });
+            </script>
+        @endif
+    @endif
 @endsection

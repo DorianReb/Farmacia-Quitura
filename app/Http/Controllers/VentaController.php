@@ -14,24 +14,21 @@ class VentaController extends Controller
 {
     public function index(Request $request)
     {
-        $productoEncontrado = null;
+        $productoEncontrado = null; // Se usará solo para el modal/detalle.
         $itemsEnVenta = [];
         $totalVenta = 0;
+        $q = trim($request->q); // Obtener el término de búsqueda
 
-        if ($request->q) {
-            $productoEncontrado = Producto::with(['lotes', 'marca', 'formaFarmaceutica', 'presentacion', 'categoria'])
-                ->where('codigo_barras', $request->q)
-                ->first();
+        // Lógica para obtener productos basados en el nombre comercial (búsqueda principal)
+        $productosBuscados = Producto::query()
+            ->when($q, function ($query) use ($q) {
+                $query->where('nombre_comercial', 'LIKE', "%{$q}%")
+                    ->orWhere('codigo_barras', 'LIKE', "{$q}"); // Opcional: mantén el código de barras si el usuario escribe el código.
+            })
+            ->orderBy('nombre_comercial', 'asc')
+            ->paginate(10, ['*'], 'productos_page');
 
-            if ($productoEncontrado) {
-                $productoEncontrado->existencias_calculadas = $productoEncontrado->lotes->sum('cantidad');
-
-                // Asignar información de lote FEFO si existe
-                $productoEncontrado->lotes = $productoEncontrado->lotes->sortBy('fecha_caducidad')->values();
-            }
-        }
-
-        return view('venta.index', compact('productoEncontrado', 'itemsEnVenta', 'totalVenta'));
+        return view('venta.index', compact('productosBuscados', 'productoEncontrado', 'itemsEnVenta', 'totalVenta', 'q'));
     }
 
     public function buscarProductoPorCodigo($codigo)
@@ -42,9 +39,8 @@ class VentaController extends Controller
             'presentacion',
             'formaFarmaceutica',
             'categoria',
-            // OJO: Cargamos la relación completa: asignaUbicaciones -> nivel -> pasillo
             'asignaUbicaciones.nivel.pasillo', 
-            'asignaComponentes.nombreCientifico'
+            'asignaComponentes.componente'
         ])
         ->where('codigo_barras', $codigo)
         ->first();
@@ -66,7 +62,7 @@ class VentaController extends Controller
 
         // Extraer Nombre Científico (ya estaba bien)
         $primerComponente = $producto->asigna_componentes->first();
-        $producto->nombre_cientifico = $primerComponente?->nombreCientifico?->nombre ?? null;
+        $producto->nombre_cientifico = $primerComponente?->componente?->nombre ?? null;
 
 
         // --- LÓGICA DE FORMATEO DE UBICACIONES (LA CLAVE) ---
