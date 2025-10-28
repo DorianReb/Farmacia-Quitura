@@ -92,12 +92,13 @@ Route::middleware(['auth', 'estado', 'role:Administrador,Superadmin'])->group(fu
 */
 Route::middleware(['auth', 'estado', 'role:Vendedor,Administrador,Superadmin'])->group(function () {
     Route::get('/venta', [VentaController::class, 'index'])->name('venta.index');
-    Route::get('/venta/buscarProducto/{codigo}', [VentaController::class, 'buscarProductoPorCodigo']);
+    Route::get('venta/producto/{codigo}', [VentaController::class, 'buscarProductoPorCodigo'])->name('venta.buscar.api');
     Route::post('/venta/store', [VentaController::class, 'store'])->name('venta.store');
     Route::get('/venta/historial', [VentaController::class, 'historial'])->name('venta.historial');
     Route::resource('pasillos', PasilloController::class)->names('pasillo');
     Route::resource('asignapromocion', AsignaPromocionController::class)->names('asignapromocion')->only([
     'index', 'create', 'store', 'destroy']);
+    Route::get('/productos/menu', [ProductoController::class, 'menu'])->name('producto.menu');
 
     // Ruta temporal de dashboard vendedor (nombre intacto)
     Route::view('/dashboard/vendedor', 'vendedor.dashboard')->name('vendedor.dashboard');

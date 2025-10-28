@@ -117,4 +117,32 @@ class ProductoController extends Controller
         return $this->hasMany(Lote::class, 'producto_id');
     }
 
+    public function menu(Request $request)
+    {
+        $q = trim($request->q);
+        
+        // La consulta se inicia
+        $productosBuscados = Producto::query()
+            ->with(['lotes', 'marca']) 
+            ->when($q, function ($query) use ($q) {
+                // Aplicar un grupo de cláusulas WHERE OR
+                $query->where(function($q_inner) use ($q) {
+                    // Búsqueda por Nombre Comercial (flexible)
+                    $q_inner->where('nombre_comercial', 'LIKE', "%{$q}%");
+                    
+                    // Opcional: Búsqueda por Código de Barras (si se ingresó un código parcial/completo)
+                    $q_inner->orWhere('codigo_barras', 'LIKE', "%{$q}%"); 
+                });
+            })
+            // Aseguramos el ordenamiento
+            ->orderBy('nombre_comercial', 'asc')
+            // Paginación fija de 10 resultados por modal
+            ->paginate(10, ['*'], 'productos_page');
+        
+        // DEVOLVER SOLO EL HTML PARCIAL (REQUERIDO POR AJAX)
+        return view('producto.menu', [
+            'productos' => $productosBuscados,
+            'q' => $q
+        ])->render();
+    }
 }

@@ -14,21 +14,28 @@ class VentaController extends Controller
 {
     public function index(Request $request)
     {
-        $productoEncontrado = null; // Se usará solo para el modal/detalle.
+        $productoEncontrado = null;
         $itemsEnVenta = [];
         $totalVenta = 0;
-        $q = trim($request->q); // Obtener el término de búsqueda
+        $q = trim($request->q);
 
         // Lógica para obtener productos basados en el nombre comercial (búsqueda principal)
+        // Incluimos las relaciones necesarias para mostrar la información básica en el modal de menú
         $productosBuscados = Producto::query()
+            ->with(['lotes']) // Solo si necesitas saber el stock total para el menú
             ->when($q, function ($query) use ($q) {
+                // Priorizamos la búsqueda por nombre comercial
                 $query->where('nombre_comercial', 'LIKE', "%{$q}%")
-                    ->orWhere('codigo_barras', 'LIKE', "{$q}"); // Opcional: mantén el código de barras si el usuario escribe el código.
+                    ->orWhere('codigo_barras', 'LIKE', "{$q}");
             })
             ->orderBy('nombre_comercial', 'asc')
             ->paginate(10, ['*'], 'productos_page');
 
-        return view('venta.index', compact('productosBuscados', 'productoEncontrado', 'itemsEnVenta', 'totalVenta', 'q'));
+        // NUEVO: Bandera para que el JavaScript sepa si debe abrir el modal al cargar la página.
+        $abrirModalMenu = ($q && $productosBuscados->count() > 0) ? true : false;
+        
+        // El resto de variables que usas en la vista:
+        return view('venta.index', compact('productosBuscados', 'productoEncontrado', 'itemsEnVenta', 'totalVenta', 'q', 'abrirModalMenu'));
     }
 
     public function buscarProductoPorCodigo($codigo)
@@ -39,8 +46,8 @@ class VentaController extends Controller
             'presentacion',
             'formaFarmaceutica',
             'categoria',
-            'asignaUbicaciones.nivel.pasillo', 
-            'asignaComponentes.componente'
+            'asignaUbicaciones.nivel.pasillo',
+            'asignaComponentes.componente' // Corregida la relación
         ])
         ->where('codigo_barras', $codigo)
         ->first();
@@ -66,6 +73,7 @@ class VentaController extends Controller
 
 
         // --- LÓGICA DE FORMATEO DE UBICACIONES (LA CLAVE) ---
+        // La variable $ubicacionesFormateadas se inicializa aquí
         $ubicacionesFormateadas = [];
         
         foreach ($producto->asigna_ubicaciones as $asignacion) {

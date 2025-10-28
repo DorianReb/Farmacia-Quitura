@@ -37,6 +37,7 @@
 </style>
 
 {{-- 🔍 Barra de búsqueda --}}
+{{-- Esta barra enviará el 'q' al controlador que renderiza este modal dinámicamente --}}
 <form id="formBuscarEnMenu" class="mb-3" method="GET" action="{{ route('producto.menu') }}">
     <div class="input-group">
         <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
@@ -53,12 +54,19 @@
     @forelse($productos as $producto)
         <div class="col-6 col-sm-4 col-md-3 col-lg-2">
             <div class="producto-card" 
-                 data-id="{{ $producto->id }}"
+                 {{-- CAMBIO CLAVE: Usa el código de barras para la función de detalle/API --}}
+                 data-codigo-barras="{{ $producto->codigo_barras }}"
                  data-nombre="{{ $producto->nombre_comercial }}"
-                 data-precio="{{ $producto->precio ?? 0 }}">
+                 data-precio="{{ $producto->precio_venta ?? $producto->precio ?? 0 }}">
+                
                 <img src="{{ $producto->imagen_url ?? 'https://via.placeholder.com/150.png?text=Producto' }}" 
                      alt="{{ $producto->nombre_comercial }}">
                 <p>{{ $producto->nombre_comercial }}</p>
+                
+                {{-- Si quieres mostrar el stock mínimo en el menú (opcional) --}}
+                @if(isset($producto->existencias))
+                    <small class="text-muted">Stock: {{ $producto->existencias }}</small>
+                @endif
             </div>
         </div>
     @empty
@@ -68,35 +76,16 @@
     @endforelse
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
+{{-- Paginación si es una colección paginada --}}
+@if(isset($productos) && method_exists($productos, 'links'))
+    <div class="mt-3 d-flex justify-content-center">
+        {{ $productos->appends(['q' => request('q')])->links() }} 
+        {{-- Usar appends(['q' => request('q')]) para mantener el término de búsqueda al cambiar de página --}}
+    </div>
+@endif
 
-    // 🟦 1. La barra de búsqueda redirige normalmente (GET)
-    const formBuscar = document.getElementById('formBuscarEnMenu');
-    formBuscar.addEventListener('submit', function(e) {
-        // Deja que el formulario se envíe normalmente al controlador
-        // No hacemos preventDefault aquí
-    });
-
-    // 🟩 2. Click en producto -> lo agrega a la lista de venta
-    const productos = document.querySelectorAll('.producto-card');
-    productos.forEach(card => {
-        card.addEventListener('click', () => {
-            const id = card.dataset.id;
-            const nombre = card.dataset.nombre;
-            const precio = parseFloat(card.dataset.precio);
-
-            // Aquí puedes personalizar qué hace al añadir
-            agregarAListaDeVenta({ id, nombre, precio });
-        });
-    });
-
-    // 🛍️ Función que añade un producto a la lista de venta (ejemplo básico)
-    function agregarAListaDeVenta(producto) {
-        // Puedes reemplazar esto con un fetch/AJAX o manipular tu tabla directamente
-        console.log('Producto agregado a venta:', producto);
-        alert(`Producto añadido: ${producto.nombre} - $${producto.precio.toFixed(2)}`);
-    }
-
-});
-</script>
+{{-- 
+    LA LÓGICA DE JAVASCRIPT SE ELIMINA DE AQUÍ.
+    El evento 'click' en '.producto-card' es manejado por el Event Listener delegado
+    en venta.scripts.blade.php (modalMenuBody.addEventListener('click', ...))
+--}}

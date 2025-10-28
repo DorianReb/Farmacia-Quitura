@@ -1,4 +1,4 @@
-    @extends('layouts.sidebar-admin')
+@extends('layouts.sidebar-admin')
 
 @section('content')
 <div class="container-xxl">
@@ -8,10 +8,15 @@
             <i class="fa-solid fa-cash-register"></i>
             <h1 class="h4 m-0">Vender</h1>
         </div>
+        
+        {{-- UNIFICADO: Este formulario será manejado completamente por JavaScript --}}
         <form id="formBuscarProducto" class="d-inline-block w-100" style="min-width:300px;max-width:480px;">
             <div class="input-group">
                 <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
-                <input type="search" id="codigo_barras_input" class="form-control" placeholder="Escanear código o buscar...">
+                {{-- name="q" se mantiene para accesibilidad/compatibilidad --}}
+                <input type="search" name="q" id="codigo_barras_input" class="form-control" 
+                       placeholder="Buscar producto (nombre) o escanear (código)..." value="{{ request('q') ?? '' }}"> 
+                {{-- Usamos type="submit" para que el ENTER funcione, el JS lo interceptará --}}
                 <button class="btn btn-success" type="submit"><i class="fa-solid fa-search"></i></button>
             </div>
         </form>
@@ -85,6 +90,32 @@
     </div>
 </div>
 
+{{-- MODAL 1: MENÚ DE PRODUCTOS (Abre con la búsqueda por nombre) --}}
+<div class="modal fade" id="menuProductosModal" tabindex="-1" aria-labelledby="menuProductosModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-azul-marino text-white">
+                <h5 class="modal-title" id="menuProductosModalLabel">Menú de Productos (Resultados)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                {{-- CORRECCIÓN: Usamos solo 'producto.menu' --}}
+                @if (isset($productosBuscados) && $productosBuscados->count())
+                    @include('producto.menu', ['productos' => $productosBuscados]) 
+                @elseif (request('q'))
+                    <p class="text-center text-muted">No se encontraron productos para "{{ request('q') }}".</p>
+                @else 
+                    <p class="text-center text-muted">Ingresa un nombre para buscar productos.</p>
+                @endif
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- MODAL 2: DETALLES DEL PRODUCTO (Tu modal existente) --}}
 <div class="modal fade" id="modalDetallesProducto" tabindex="-1" aria-labelledby="modalDetallesProductoLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
@@ -130,7 +161,7 @@
 </div>
 
 {{-- Partials --}}
-@include('venta.create') {{-- modal --}}
-@include('venta.scripts') {{-- JS --}}
+@include('venta.create')
+@include('venta.scripts')
 
 @endsection
