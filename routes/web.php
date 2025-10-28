@@ -49,6 +49,29 @@ Route::middleware(['auth', 'estado', 'role:Superadmin'])
     });
 
 /*
+/*
+|--------------------------------------------------------------------------
+| INVENTARIO (Vendedor, Administrador, Superadmin)
+| - Vendedor: Lote => index, create, store, edit, update (NO delete, NO show)
+| - Vendedor: Productos/Asignar componentes/Ubicaciones/Pasillos/Niveles => SOLO index
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'estado', 'role:Vendedor,Administrador,Superadmin'])->group(function () {
+
+    // Lotes: registrar y editar (sin delete / sin show)
+    Route::resource('lote', App\Http\Controllers\LoteController::class)
+        ->only(['index','create','store','edit','update']);
+
+    // Solo índices
+    Route::resource('producto', App\Http\Controllers\ProductoController::class)->only(['index']);
+    Route::resource('asigna_componentes', App\Http\Controllers\AsignaComponenteController::class)->only(['index']);
+    Route::resource('ubicacion', App\Http\Controllers\AsignaUbicacionController::class)->only(['index']);
+    Route::resource('pasillo', App\Http\Controllers\PasilloController::class)->only(['index']);
+    Route::resource('nivel',   App\Http\Controllers\NivelController::class)->only(['index']);
+});
+
+
+/*
 |--------------------------------------------------------------------------
 | ADMINISTRACIÓN (Admin y Superadmin)  --> mantiene TODOS los nombres originales
 |--------------------------------------------------------------------------
@@ -76,14 +99,27 @@ Route::middleware(['auth', 'estado', 'role:Administrador,Superadmin'])->group(fu
     });
 
     // Inventario / Gestión (mismos nombres)
-    Route::resource('producto', ProductoController::class);
-    Route::resource('lote', App\Http\Controllers\LoteController::class);
-    Route::resource('ubicacion', AsignaUbicacionController::class);
+    // DESPUÉS:
+    // Inventario / Gestión (resto de métodos NO expuestos arriba)
+    Route::resource('producto', App\Http\Controllers\ProductoController::class)
+        ->except(['index']); // el index ya está en el grupo compartido
+
+    Route::resource('lote', App\Http\Controllers\LoteController::class)
+        ->except(['index','create','store','edit','update']); // aquí quedan show/destroy si los usas
+
+    Route::resource('ubicacion', App\Http\Controllers\AsignaUbicacionController::class)
+        ->except(['index']);
+
+    Route::resource('asigna_componentes', App\Http\Controllers\AsignaComponenteController::class)
+        ->except(['index']);
+
+    Route::resource('pasillo', App\Http\Controllers\PasilloController::class)
+        ->except(['index']);
+
+    Route::resource('nivel', App\Http\Controllers\NivelController::class)
+        ->except(['index']);
     Route::resource('promocion', PromocionController::class);
     Route::resource('asignapromocion', AsignaPromocionController::class);
-    Route::resource('asigna_componentes', AsignaComponenteController::class);
-    Route::resource('pasillo', App\Http\Controllers\PasilloController::class)->except(['index', 'show', 'create', 'edit']);
-    Route::resource('nivel', App\Http\Controllers\NivelController::class)->except(['index', 'show', 'create', 'edit']);
 });
 
 /*

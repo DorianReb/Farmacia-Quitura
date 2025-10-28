@@ -10,6 +10,11 @@
         .pagination .page-item.active .page-link{ background:var(--bs-success); border-color:var(--bs-success); }
     </style>
 
+    @php
+        $rol = Auth::user()->rol ?? null;
+        $isAdmin = in_array($rol, ['Administrador','Superadmin']);
+    @endphp
+
     <div class="container-xxl">
         <div class="row mb-2">
             <div class="col-12 text-center">
@@ -21,21 +26,24 @@
         </div>
 
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <button type="button"
-                    class="btn btn-success btn-icon shadow-sm"
-                    data-bs-toggle="modal"
-                    data-bs-target="#createProductoModal"
-                    data-bs-placement="right"
-                    title="Agregar nuevo">
-                <i class="fa-solid fa-plus"></i>
-            </button>
+            {{-- Agregar nuevo: SOLO Admin / Superadmin --}}
+            @if($isAdmin)
+                <button type="button"
+                        class="btn btn-success btn-icon shadow-sm"
+                        data-bs-toggle="modal"
+                        data-bs-target="#createProductoModal"
+                        data-bs-placement="right"
+                        title="Agregar nuevo">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+            @endif
 
             <form method="GET" action="{{ route('producto.index') }}" class="d-inline-block" style="min-width:300px;max-width:480px;width:100%;">
                 <div class="input-group">
                     <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
                     <input type="search" name="q" value="{{ request('q') }}" class="form-control" placeholder="Buscar producto…">
                     @if(request('q'))
-                        <a href="{{ route('productos.index') }}" class="btn btn-outline-secondary" data-bs-toggle="tooltip" title="Limpiar búsqueda">
+                        <a href="{{ route('producto.index') }}" class="btn btn-outline-secondary" data-bs-toggle="tooltip" title="Limpiar búsqueda">
                             <i class="fa-regular fa-circle-xmark"></i>
                         </a>
                     @endif
@@ -67,7 +75,9 @@
                             <th>Forma</th>
                             <th>Presentación</th>
                             <th>Categoría</th>
-                            <th class="text-end" style="width:220px">Acciones</th>
+                            @if($isAdmin)
+                                <th class="text-end" style="width:220px">Acciones</th>
+                            @endif
                         </tr>
                         </thead>
                         <tbody>
@@ -78,32 +88,41 @@
                                 <td>{{ $producto->formaFarmaceutica->nombre ?? '-' }}</td>
                                 <td>{{ $producto->presentacion->nombre ?? '-' }}</td>
                                 <td>{{ $producto->categoria->nombre ?? '-' }}</td>
-                                <td class="text-end">
-                                    <div class="btn-group btn-group-sm" role="group">
-                                        <button class="btn btn-warning shadow-sm rounded-pill btn-icon"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#editProductoModal{{ $producto->id }}"
-                                                title="Editar" data-bs-placement="top">
-                                            <i class="fa-regular fa-pen-to-square"></i>
-                                        </button>
-                                        <form action="{{ route('producto.destroy', $producto->id) }}"
-                                              method="POST" class="d-inline"
-                                              onsubmit="return confirm('¿Eliminar este producto?')">
-                                            @csrf @method('DELETE')
-                                            <button class="btn btn-danger shadow-sm rounded-pill btn-icon"
-                                                    type="submit"
-                                                    title="Eliminar" data-bs-placement="top">
-                                                <i class="fa-regular fa-trash-can"></i>
+
+                                @if($isAdmin)
+                                    <td class="text-end">
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            {{-- Editar: SOLO Admin / Superadmin --}}
+                                            <button class="btn btn-warning shadow-sm rounded-pill btn-icon"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#editProductoModal{{ $producto->id }}"
+                                                    title="Editar" data-bs-placement="top">
+                                                <i class="fa-regular fa-pen-to-square"></i>
                                             </button>
-                                        </form>
-                                    </div>
-                                </td>
+
+                                            {{-- Eliminar: SOLO Admin / Superadmin --}}
+                                            <form action="{{ route('producto.destroy', $producto->id) }}"
+                                                  method="POST" class="d-inline"
+                                                  onsubmit="return confirm('¿Eliminar este producto?')">
+                                                @csrf @method('DELETE')
+                                                <button class="btn btn-danger shadow-sm rounded-pill btn-icon"
+                                                        type="submit"
+                                                        title="Eliminar" data-bs-placement="top">
+                                                    <i class="fa-regular fa-trash-can"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                @endif
                             </tr>
 
-                            @include('producto.edit', ['producto' => $producto])
+                            {{-- Modal editar: SOLO Admin / Superadmin --}}
+                            @if($isAdmin)
+                                @include('producto.edit', ['producto' => $producto])
+                            @endif
                         @empty
                             <tr>
-                                <td colspan="6" class="text-center py-4 text-muted">No hay productos registrados.</td>
+                                <td colspan="{{ $isAdmin ? 6 : 5 }}" class="text-center py-4 text-muted">No hay productos registrados.</td>
                             </tr>
                         @endforelse
                         </tbody>
@@ -128,15 +147,19 @@
         </div>
     </div>
 
-    @include('producto.create')
+    {{-- Modal crear: SOLO Admin / Superadmin --}}
+    @if($isAdmin)
+        @include('producto.create')
+    @endif
 
-    @if ($errors->any() && session('from_modal') === 'create_producto')
+    {{-- Reapertura de modales tras validación: SOLO si hay modales (Admin/Superadmin) --}}
+    @if ($isAdmin && $errors->any() && session('from_modal') === 'create_producto')
         <script>
             document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal('#createProductoModal').show());
         </script>
     @endif
 
-    @if ($errors->any() && session('from_modal') === 'edit_producto' && session('edit_id'))
+    @if ($isAdmin && $errors->any() && session('from_modal') === 'edit_producto' && session('edit_id'))
         <script>
             document.addEventListener('DOMContentLoaded', () => {
                 const el = document.getElementById('editProductoModal{{ session('edit_id') }}');

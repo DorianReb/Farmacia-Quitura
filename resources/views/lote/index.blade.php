@@ -22,6 +22,9 @@
         justify-content: center;
     }
 </style>
+@php
+    $rol = Auth::user()->rol ?? null;
+@endphp
 
 <div class="container-xxl">
 
@@ -111,16 +114,21 @@
                                             <i class="fa-regular fa-pen-to-square"></i>
                                         </button>
 
-                                        {{-- Eliminar --}}
-                                        <form action="{{ route('lote.destroy', $lote->id) }}" method="POST" class="d-inline"
-                                            onsubmit="return confirm('¿Eliminar este lote?')">
-                                            @csrf @method('DELETE')
-                                            <button class="btn btn-danger shadow-sm rounded-pill btn-icon"
-                                                    type="submit"
-                                                    title="Eliminar" data-bs-toggle="tooltip" data-bs-placement="top">
-                                                <i class="fa-regular fa-trash-can"></i>
-                                            </button>
-                                        </form>
+                                        {{-- Eliminar: SOLO Admin + Superadmin (mismo estilo que Edit) --}}
+                                        @if(in_array($rol, ['Administrador','Superadmin']))
+                                            <form action="{{ route('lote.destroy', $lote) }}" method="POST" class="d-inline"
+                                                  onsubmit="return confirm('¿Eliminar lote?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button class="btn btn-danger shadow-sm rounded-pill btn-icon ms-1"
+                                                        type="submit"
+                                                        data-bs-toggle="tooltip"
+                                                        data-bs-placement="top"
+                                                        title="Eliminar">
+                                                    <i class="fa-regular fa-trash-can"></i>
+                                                </button>
+                                            </form>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>

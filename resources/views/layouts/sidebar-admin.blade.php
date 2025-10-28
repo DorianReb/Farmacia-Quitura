@@ -59,6 +59,17 @@
     /** @var \App\Models\User $user */
     $user = Auth::user();
     $nombreCompleto = $user?->nombre_completo ?? trim(($user->nombre ?? '').' '.($user->apellido_paterno ?? '').' '.($user->apellido_materno ?? ''));
+    $rol = $user?->rol;
+
+    // Permisos de inventario
+    $canInventory        = in_array($rol, ['Superadmin','Administrador','Vendedor']);
+    $canManageInventory  = in_array($rol, ['Superadmin','Administrador']);
+
+    // Rutas activas (para abrir el acordeón correctamente)
+    $isInventarioRoute = request()->routeIs(
+        'producto.*','lote.*','asigna_componentes.*','ubicacion.*'
+    );
+
 @endphp
 
 <div class="d-flex">
@@ -91,84 +102,60 @@
         <nav class="flex-grow-1">
             <ul id="sidebarMenu" class="nav nav-pills flex-column gap-1">
 
-                {{-- ================== VENTAS (visible para todos) ================== --}}
+                {{-- ================== VENTAS (igual que ya lo tienes) ================== --}}
                 @php
                     $isVentasRoute = request()->routeIs('venta.index') || request()->routeIs('venta.historial');
                 @endphp
                 <li class="nav-item">
                     <a class="nav-link d-flex justify-content-between align-items-center {{ $isVentasRoute ? '' : 'collapsed' }}"
-                       data-bs-toggle="collapse"
-                       data-bs-target="#menuVentas"
-                       aria-expanded="{{ $isVentasRoute ? 'true' : 'false' }}"
-                       aria-controls="menuVentas"
-                       href="javascript:void(0)">
-                        <span class="d-flex align-items-center gap-2">
-                            <i class="fa-solid fa-dollar-sign"></i><span>Ventas</span>
-                        </span>
+                       data-bs-toggle="collapse" data-bs-target="#menuVentas"
+                       aria-expanded="{{ $isVentasRoute ? 'true' : 'false' }}" aria-controls="menuVentas" href="javascript:void(0)">
+    <span class="d-flex align-items-center gap-2">
+      <i class="fa-solid fa-dollar-sign"></i><span>Ventas</span>
+    </span>
                         <span class="chev"><i class="fa-solid fa-chevron-right"></i></span>
                     </a>
-
                     <div id="menuVentas" class="collapse {{ $isVentasRoute ? 'show' : '' }} ms-2" data-bs-parent="#sidebarMenu">
                         <ul class="nav flex-column mt-1">
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('venta.index') ? 'active' : '' }}"
-                                   href="{{ route('venta.index') }}">
-                                    <i class="fa-solid fa-cash-register"></i><span class="ms-2">Realizar venta</span>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('venta.historial') ? 'active' : '' }}"
-                                   href="{{ route('venta.historial') }}">
-                                    <i class="fa-regular fa-clock"></i><span class="ms-2">Historial de Transacciones</span>
-                                </a>
-                            </li>
+                            <li class="nav-item"><a class="nav-link {{ request()->routeIs('venta.index') ? 'active' : '' }}" href="{{ route('venta.index') }}"><i class="fa-solid fa-cash-register"></i><span class="ms-2">Realizar venta</span></a></li>
+                            <li class="nav-item"><a class="nav-link {{ request()->routeIs('venta.historial') ? 'active' : '' }}" href="{{ route('venta.historial') }}"><i class="fa-regular fa-clock"></i><span class="ms-2">Historial de Transacciones</span></a></li>
                         </ul>
                     </div>
                 </li>
+
+                {{-- ===================== INVENTARIO (Vendedor + Admin + Superadmin) ===================== --}}
+                @php
+                    $canInventory = in_array($rol, ['Vendedor','Administrador','Superadmin']);
+                    $isInventarioRoute = request()->routeIs('producto.*','lote.*','asigna_componentes.*','ubicacion.*');
+                @endphp
+
+                @if($canInventory)
+                    <li class="nav-item">
+                        <a class="nav-link d-flex justify-content-between align-items-center {{ $isInventarioRoute ? '' : 'collapsed' }}"
+                           data-bs-toggle="collapse" data-bs-target="#menuInventario"
+                           aria-expanded="{{ $isInventarioRoute ? 'true' : 'false' }}"
+                           aria-controls="menuInventario" href="javascript:void(0)">
+    <span class="d-flex align-items-center gap-2">
+      <i class="fa-solid fa-bag-shopping"></i><span>Inventario</span>
+    </span>
+                            <span class="chev"><i class="fa-solid fa-chevron-right"></i></span>
+                        </a>
+
+                        <div id="menuInventario" class="collapse {{ $isInventarioRoute ? 'show' : '' }} ms-2" data-bs-parent="#sidebarMenu">
+                            <ul class="nav flex-column mt-1">
+                                <li class="nav-item"><a class="nav-link {{ request()->routeIs('producto.*') ? 'active' : '' }}" href="{{ route('producto.index') }}"><i class="fa-solid fa-pills"></i><span class="ms-2">Productos</span></a></li>
+                                <li class="nav-item"><a class="nav-link {{ request()->routeIs('lote.*') ? 'active' : '' }}" href="{{ route('lote.index') }}"><i class="fa-solid fa-box"></i><span class="ms-2">Lotes</span></a></li>
+                                <li class="nav-item"><a class="nav-link {{ request()->routeIs('asigna_componentes.*') ? 'active' : '' }}" href="{{ route('asigna_componentes.index') }}"><i class="fa-solid fa-diagram-project"></i><span class="ms-2">Asignar componentes</span></a></li>
+                                <li class="nav-item"><a class="nav-link {{ request()->routeIs('ubicacion.*') ? 'active' : '' }}" href="{{ route('ubicacion.index') }}"><i class="fa-solid fa-location-dot"></i><span class="ms-2">Ubicaciones</span></a></li>
+                            </ul>
+                        </div>
+                    </li>
+                @endif
 
 
                 {{-- ================== SOLO SUPERADMIN / ADMIN ================== --}}
                 @if(in_array($user?->rol, ['Superadmin','Administrador']))
 
-                    {{-- Inventario --}}
-                    <li class="nav-item">
-                        <a class="nav-link d-flex justify-content-between align-items-center collapsed"
-                           data-bs-toggle="collapse"
-                           data-bs-target="#menuInventario"
-                           aria-expanded="false"
-                           aria-controls="menuInventario"
-                           href="javascript:void(0)">
-                            <span class="d-flex align-items-center gap-2">
-                                <i class="fa-solid fa-bag-shopping"></i><span>Inventario</span>
-                            </span>
-                            <span class="chev"><i class="fa-solid fa-chevron-right"></i></span>
-                        </a>
-                        <div id="menuInventario" class="collapse ms-2" data-bs-parent="#sidebarMenu">
-                            <ul class="nav flex-column mt-1">
-                                <li class="nav-item">
-                                    <a class="nav-link" href="{{ route('producto.index') }}">
-                                        <i class="fa-solid fa-pills"></i><span class="ms-2">Productos</span>
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="{{ route('lote.index') }}">
-                                        <i class="fa-solid fa-box"></i><span class="ms-2">Lotes</span>
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="{{ route('asigna_componentes.index') }}">
-                                    <i class="fa-solid fa-diagram-project"></i><span class="ms-2">Asignar componentes</span>
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="{{ route('ubicacion.index') }}">
-                                        <i class="fa-solid fa-location-dot"></i><span class="ms-2">Ubicaciones</span>
-                                    </a>
-                                </li>
-
-                            </ul>
-                        </div>
-                    </li>
 
                     {{-- Promociones --}}
                     <li class="nav-item">

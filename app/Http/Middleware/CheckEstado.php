@@ -8,9 +8,6 @@ use Illuminate\Support\Facades\Auth;
 
 class CheckEstado
 {
-    /**
-     * Maneja la solicitud según el estado del usuario.
-     */
     public function handle(Request $request, Closure $next)
     {
         // Si no está autenticado, lo mandamos al login
