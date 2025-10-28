@@ -1,7 +1,13 @@
 @extends('layouts.sidebar-admin')
 
 @section('content')
-<style>
+    @php
+        $rol = Auth::user()->rol ?? null;
+        $isAdmin = in_array($rol, ['Administrador','Superadmin']);
+    @endphp
+
+
+    <style>
     /* ... (Estilos CSS se mantienen igual) ... */
     .card-soft {
         border: 0;
@@ -62,24 +68,29 @@
             <div class="card card-soft h-100">
                 <div class="card-header text-dark d-flex justify-content-between align-items-center py-2">
                     <h2 class="h6 m-0 section-title text-uppercase">Pasillos</h2>
-                    <button type="button" class="btn btn-sm btn-success rounded-pill shadow-sm"
-                            data-bs-toggle="modal" data-bs-target="#createPasilloModal">
-                        <i class="fa-solid fa-plus"></i>
-                    </button>
+                    @if($isAdmin)
+                        <button type="button" class="btn btn-sm btn-success rounded-pill shadow-sm"
+                                data-bs-toggle="modal" data-bs-target="#createPasilloModal">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    @endif
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle m-0">
                             <thead>
-                                <tr>
-                                    <th>Código</th>
+                            <tr>
+                                <th>Código</th>
+                                @if($isAdmin)
                                     <th class="text-end" style="width: 35%;">Acciones</th>
-                                </tr>
+                                @endif
+                            </tr>
                             </thead>
                             <tbody>
-                                @forelse($pasillos as $pasillo)
-                                    <tr>
-                                        <td>{{ $pasillo->nombre }}</td>
+                            @forelse($pasillos as $pasillo)
+                                <tr>
+                                    <td>{{ $pasillo->nombre }}</td>
+                                    @if($isAdmin)
                                         <td class="text-end">
                                             <div class="d-inline-flex gap-1">
                                                 <button class="btn btn-warning btn-sm rounded-pill shadow-sm"
@@ -88,21 +99,22 @@
                                                         title="Editar">
                                                     <i class="fa-regular fa-pen-to-square"></i>
                                                 </button>
-                                                <form action="{{ route('pasillo.destroy', $pasillo->id) }}"
-                                                      method="POST"
+                                                <form action="{{ route('pasillo.destroy', $pasillo->id) }}" method="POST"
                                                       onsubmit="return confirm('¿Eliminar este pasillo?')">
-                                                     @csrf @method('DELETE')
-                                                     <button class="btn btn-danger btn-sm rounded-pill shadow-sm" type="submit">
-                                                         <i class="fa-regular fa-trash-can"></i>
-                                                     </button>
+                                                    @csrf @method('DELETE')
+                                                    <button class="btn btn-danger btn-sm rounded-pill shadow-sm" type="submit">
+                                                        <i class="fa-regular fa-trash-can"></i>
+                                                    </button>
                                                 </form>
                                             </div>
                                         </td>
-                                    </tr>
-                                @empty
-                                    <tr><td colspan="3" class="text-center py-2 text-muted">No hay pasillos.</td></tr>
-                                @endforelse
+                                    @endif
+                                </tr>
+                            @empty
+                                <tr><td colspan="{{ $isAdmin ? 2 : 1 }}" class="text-center py-2 text-muted">No hay pasillos.</td></tr>
+                            @endforelse
                             </tbody>
+
                         </table>
                     </div>
 
@@ -121,24 +133,30 @@
             <div class="card card-soft h-100">
                 <div class="card-header text-dark d-flex justify-content-between align-items-center py-2">
                     <h2 class="h6 m-0 section-title text-uppercase">Niveles</h2>
-                    <button type="button" class="btn btn-sm btn-success rounded-pill shadow-sm"
-                            data-bs-toggle="modal" data-bs-target="#createNivelModal">
-                        <i class="fa-solid fa-plus"></i>
-                    </button>
+                    @if($isAdmin)
+                        <button type="button" class="btn btn-sm btn-success rounded-pill shadow-sm"
+                                data-bs-toggle="modal" data-bs-target="#createNivelModal">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    @endif
                 </div>
+
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle m-0">
                             <thead>
-                                <tr>
-                                    <th>Nombre</th>
+                            <tr>
+                                <th>Nombre</th>
+                                @if($isAdmin)
                                     <th class="text-end" style="width: 35%;">Acciones</th>
-                                </tr>
+                                @endif
+                            </tr>
                             </thead>
                             <tbody>
-                                @forelse($niveles as $nivel)
-                                    <tr>
-                                        <td>{{ $nivel->nombre }}</td>
+                            @forelse($niveles as $nivel)
+                                <tr>
+                                    <td>{{ $nivel->nombre }}</td>
+                                    @if($isAdmin)
                                         <td class="text-end">
                                             <div class="d-inline-flex gap-1">
                                                 <button class="btn btn-warning btn-sm rounded-pill shadow-sm"
@@ -147,8 +165,7 @@
                                                         title="Editar">
                                                     <i class="fa-regular fa-pen-to-square"></i>
                                                 </button>
-                                                <form action="{{ route('nivel.destroy', $nivel->id) }}"
-                                                      method="POST"
+                                                <form action="{{ route('nivel.destroy', $nivel->id) }}" method="POST"
                                                       onsubmit="return confirm('¿Eliminar este nivel?')">
                                                     @csrf @method('DELETE')
                                                     <button class="btn btn-danger btn-sm rounded-pill shadow-sm" type="submit">
@@ -157,11 +174,13 @@
                                                 </form>
                                             </div>
                                         </td>
-                                    </tr>
-                                @empty
-                                    <tr><td colspan="3" class="text-center py-2 text-muted">No hay niveles.</td></tr>
-                                @endforelse
+                                    @endif
+                                </tr>
+                            @empty
+                                <tr><td colspan="{{ $isAdmin ? 2 : 1 }}" class="text-center py-2 text-muted">No hay niveles.</td></tr>
+                            @endforelse
                             </tbody>
+
                         </table>
                     </div>
 
@@ -178,12 +197,17 @@
     </div>
 
     {{-- BOTÓN AGREGAR UBICACIÓN --}}
-    <div class="d-flex justify-content-start mb-3">
-        <button type="button" class="btn btn-success shadow-sm rounded-pill"
-                data-bs-toggle="modal" data-bs-target="#createModalUbicacion" title="Agregar nueva asignación">
-            <i class="fa-solid fa-plus"></i> Agregar Ubicación
-        </button>
-    </div>
+    @if($isAdmin)
+        <div class="d-flex justify-content-start mb-3">
+            <button type="button" class="btn btn-success shadow-sm rounded-pill"
+                    data-bs-toggle="modal"
+                    data-bs-target="#createUbicacionModal"  {{-- ojo al id, ver nota al final --}}
+                    title="Agregar nueva asignación">
+                <i class="fa-solid fa-plus"></i> Agregar Ubicación
+            </button>
+        </div>
+    @endif
+
 
     {{-- TABLA PRINCIPAL DE UBICACIONES --}}
     <div class="card card-soft">
@@ -191,17 +215,20 @@
             <div class="table-responsive">
                 <table class="table table-hover align-middle m-0">
                     <thead>
-                        <tr>
-                            <th>Producto</th>
-                            <th>Nivel</th>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Nivel</th>
+                        @if($isAdmin)
                             <th class="text-end" style="width:120px;">Acciones</th>
-                        </tr>
+                        @endif
+                    </tr>
                     </thead>
                     <tbody>
-                        @forelse($ubicaciones as $ubicacion)
-                            <tr>
-                                <td>{{ $ubicacion->producto->nombre_comercial ?? '—' }}</td>
-                                <td>{{ $ubicacion->nivel->nombre ?? '—' }}</td>
+                    @forelse($ubicaciones as $ubicacion)
+                        <tr>
+                            <td>{{ $ubicacion->producto->nombre_comercial ?? '—' }}</td>
+                            <td>{{ $ubicacion->nivel->nombre ?? '—' }}</td>
+                            @if($isAdmin)
                                 <td class="text-end">
                                     <div class="d-inline-flex gap-1">
                                         <button class="btn btn-warning btn-sm rounded-pill shadow-sm"
@@ -210,8 +237,8 @@
                                                 title="Editar">
                                             <i class="fa-regular fa-pen-to-square"></i>
                                         </button>
-                                        <form action="{{ route('ubicacion.destroy', $ubicacion->id) }}"
-                                              method="POST" onsubmit="return confirm('¿Eliminar esta asignación?')">
+                                        <form action="{{ route('ubicacion.destroy', $ubicacion->id) }}" method="POST"
+                                              onsubmit="return confirm('¿Eliminar esta asignación?')">
                                             @csrf @method('DELETE')
                                             <button class="btn btn-danger btn-sm rounded-pill shadow-sm" type="submit" title="Eliminar">
                                                 <i class="fa-regular fa-trash-can"></i>
@@ -219,11 +246,13 @@
                                         </form>
                                     </div>
                                 </td>
-                            </tr>
-                        @empty
-                            <tr><td colspan="3" class="text-center py-4 text-muted">No hay asignaciones registradas.</td></tr>
-                        @endforelse
+                            @endif
+                        </tr>
+                    @empty
+                        <tr><td colspan="{{ $isAdmin ? 3 : 2 }}" class="text-center py-4 text-muted">No hay asignaciones registradas.</td></tr>
+                    @endforelse
                     </tbody>
+
                 </table>
 
                 {{-- PAGINACIÓN UBICACIONES --}}
@@ -237,34 +266,31 @@
 </div>
 
 {{-- BLOQUE DE MODALES (AÑADIDO AL FINAL DE LA VISTA) --}}
-@push('modals')
-    @include('pasillo.create', ['id' => 'createPasilloModal'])
-    @include('nivel.create', ['id' => 'createNivelModal', 'pasillos' => $pasillos])
-    @include('ubicacion.create', ['id' => 'createUbicacionModal', 'productos' => $productos])
+    @push('modals')
+        @if($isAdmin)
+            @include('pasillo.create',   ['id' => 'createPasilloModal'])
+            @include('nivel.create',     ['id' => 'createNivelModal', 'pasillos' => $pasillos])
+            @include('ubicacion.create', ['id' => 'createUbicacionModal', 'productos' => $productos])
 
-    @if(isset($pasillos))
-        @foreach($pasillos as $pasillo)
-            @include('pasillo.edit', ['pasillo' => $pasillo, 'id' => 'editPasilloModal'.$pasillo->id])
-        @endforeach
-    @endif
+            @foreach($pasillos as $pasillo)
+                @include('pasillo.edit', ['pasillo' => $pasillo, 'id' => 'editPasilloModal'.$pasillo->id])
+            @endforeach
 
-    @if(isset($niveles))
-        @foreach($niveles as $nivel)
-            @include('nivel.edit', ['nivel' => $nivel, 'id' => 'editNivelModal'.$nivel->id, 'pasillos' => $pasillos])
-        @endforeach
-    @endif
+            @foreach($niveles as $nivel)
+                @include('nivel.edit', ['nivel' => $nivel, 'id' => 'editNivelModal'.$nivel->id, 'pasillos' => $pasillos])
+            @endforeach
 
-    @if(isset($ubicaciones))
-        @foreach($ubicaciones as $ubicacion)
-            @include('ubicacion.edit', [
-                'ubicacion' => $ubicacion, 
-                'id' => 'editModalUbicacion'.$ubicacion->id,
-                'productos' => $productos,
-                'niveles' => $niveles,
-                'pasillos' => $pasillos
-            ])
-        @endforeach
-    @endif
-@endpush
+            @foreach($ubicaciones as $ubicacion)
+                @include('ubicacion.edit', [
+                  'ubicacion' => $ubicacion,
+                  'id'        => 'editModalUbicacion'.$ubicacion->id,
+                  'productos' => $productos,
+                  'niveles'   => $niveles,
+                  'pasillos'  => $pasillos
+                ])
+            @endforeach
+        @endif
+    @endpush
+
 
 @endsection

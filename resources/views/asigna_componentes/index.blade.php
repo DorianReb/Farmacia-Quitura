@@ -1,4 +1,8 @@
 @extends('layouts.sidebar-admin')
+@php
+    $rol = Auth::user()->rol ?? null;
+    $isAdmin = in_array($rol, ['Administrador','Superadmin']);
+@endphp
 
 @section('content')
     <style>
@@ -25,13 +29,15 @@
 
         {{-- Botón + (izq) + Buscador (der) --}}
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <button type="button"
-                    class="btn btn-success btn-icon shadow-sm"
-                    data-bs-toggle="modal"
-                    data-bs-target="#createAsignaComponenteModal"
-                    title="Agregar nuevo">
-                <i class="fa-solid fa-plus"></i>
-            </button>
+            @if($isAdmin)
+                <button type="button"
+                        class="btn btn-success btn-icon shadow-sm"
+                        data-bs-toggle="modal"
+                        data-bs-target="#createAsignaComponenteModal"
+                        title="Agregar nuevo">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+            @endif
 
             <form method="GET" action="{{ route('asigna_componentes.index') }}" class="d-inline-block" style="min-width:300px;max-width:480px;width:100%;">
                 <div class="input-group">
@@ -65,15 +71,17 @@
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle m-0">
-                        <thead class="bg-azul-marino text-white">
+                        <thead>
                         <tr>
-                            <th style="width:30%">Producto</th>
-                            <th style="width:40%">Componentes asignados</th>
-                            <th style="width:20%">Presentaciones (Fuerza/Base)</th>
-                            <th class="text-end" style="width:10%">Acciones</th>
-
+                            <th>Producto</th>
+                            <th>Componente</th>
+                            <th>Cantidad</th>
+                            @if($isAdmin)
+                                <th class="text-end" style="width:140px;">Acciones</th>
+                            @endif
                         </tr>
                         </thead>
+
                         <tbody>
                         @forelse($productosPaginator as $prod)
                             @php
@@ -126,27 +134,38 @@
                                             @foreach($grupo as $row)
                                                 <li class="mb-1">
                                                     {{ rtrim(rtrim(number_format($row->fuerza_cantidad, 2, '.', ''), '0'), '.') }}
-                                                    {{ $row->fuerzaUnidad->nombre ?? '' }}
-                                                    /
+                                                    {{ $row->fuerzaUnidad->nombre ?? '' }} /
                                                     {{ rtrim(rtrim(number_format($row->base_cantidad, 2, '.', ''), '0'), '.') }}
                                                     {{ $row->baseUnidad->nombre ?? '' }}
                                                     — <em>{{ $row->componente->nombre ?? '—' }}</em>
 
-                                                    {{-- Botón de edición por asignación --}}
-                                                    <button class="btn btn-warning btn-sm py-0 px-2 ms-1"
-                                                            data-bs-toggle="modal"
-                                                            data-bs-target="#editAsignaComponenteModal{{ $row->id }}"
-                                                            title="Editar asignación">
-                                                        <i class="fa-regular fa-pen-to-square"></i>
-                                                    </button>
+                                                    @if($isAdmin)
+                                                        {{-- Editar asignación --}}
+                                                        <button class="btn btn-warning btn-sm py-0 px-2 ms-1"
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#editAsignaComponenteModal{{ $row->id }}"
+                                                                title="Editar asignación">
+                                                            <i class="fa-regular fa-pen-to-square"></i>
+                                                        </button>
 
-                                                    {{-- Modal de edición por asignación --}}
-                                                    @include('asigna_componentes.edit', [
-                                                        'row' => $row,
-                                                        'productos' => $productos,
-                                                        'componentes' => $componentes,
-                                                        'unidades' => $unidades
-                                                    ])
+                                                        {{-- (si lo usas) Eliminar asignación --}}
+                                                        <form action="{{ route('asigna_componentes.destroy', $row->id) }}"
+                                                              method="POST" class="d-inline ms-1"
+                                                              onsubmit="return confirm('¿Eliminar este componente asignado?')">
+                                                            @csrf @method('DELETE')
+                                                            <button type="submit" class="btn btn-danger btn-sm py-0 px-2" title="Eliminar asignación">
+                                                                <i class="fa-regular fa-trash-can"></i>
+                                                            </button>
+                                                        </form>
+
+                                                        {{-- Modal editar (solo para admin) --}}
+                                                        @include('asigna_componentes.edit', [
+                                                            'row' => $row,
+                                                            'productos' => $productos,
+                                                            'componentes' => $componentes,
+                                                            'unidades' => $unidades
+                                                        ])
+                                                    @endif
                                                 </li>
                                             @endforeach
                                         </ul>
@@ -158,15 +177,17 @@
                                 {{-- Acciones a nivel producto --}}
                                 <td class="text-end align-middle">
                                     <div class="btn-group btn-group-sm" role="group">
-                                        {{-- Agregar un nuevo componente a este producto (abre modal de creación general) --}}
-                                        <button class="btn btn-success btn-icon shadow-sm"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#createAsignaComponenteModal"
-                                                title="Agregar componente">
-                                            <i class="fa-solid fa-plus"></i>
-                                        </button>
+                                        {{-- Agregar: SOLO Admin/Superadmin --}}
+                                        @if($isAdmin)
+                                            <button class="btn btn-success btn-icon shadow-sm"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#createAsignaComponenteModal"
+                                                    title="Agregar componente">
+                                                <i class="fa-solid fa-plus"></i>
+                                            </button>
+                                        @endif
 
-                                        {{-- (Opcional) Filtrar la página por este producto --}}
+                                        {{-- Filtro: visible para todos (incluye Vendedor) --}}
                                         <a class="btn btn-outline-secondary btn-icon"
                                            href="{{ route('asigna_componentes.index', ['q' => $prod->nombre_comercial]) }}"
                                            title="Ver solo este producto">

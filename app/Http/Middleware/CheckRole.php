@@ -8,9 +8,6 @@ use Illuminate\Support\Facades\Auth;
 
 class CheckRole
 {
-    /**
-     * Maneja la solicitud y verifica el rol del usuario.
-     */
     public function handle(Request $request, Closure $next, ...$roles)
     {
         // Verifica si el usuario está autenticado
