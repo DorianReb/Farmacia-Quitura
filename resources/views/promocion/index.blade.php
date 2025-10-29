@@ -25,6 +25,13 @@
 </style>
 
 <div class="container-xxl">
+    @php
+        use Carbon\Carbon;
+        $fmtFecha = function($v) {
+            return $v ? Carbon::parse($v)->format('d/m/y') : '—';
+        };
+    @endphp
+
 
     {{-- ENCABEZADO --}}
     <div class="row mb-3">
@@ -76,9 +83,9 @@
                     <tbody>
                         @forelse($promociones as $promo)
                             <tr>
-                                <td>{{ $promo->porcentaje }}%</td>
-                                <td>{{ $promo->fecha_inicio }}</td>
-                                <td>{{ $promo->fecha_fin }}</td>
+                                <td>{{ number_format($promo->porcentaje, 2) }}%</td>
+                                <td>{{ $fmtFecha($promo->fecha_inicio) }}</td>
+                                <td>{{ $fmtFecha($promo->fecha_fin) }}</td>
                                 <td>{{ $promo->usuario->nombre_completo ?? '—' }}</td>
                                 <td class="text-end">
                                     <div class="d-inline-flex gap-1">
@@ -97,6 +104,7 @@
                                     </div>
                                 </td>
                             </tr>
+
                         @empty
                             <tr><td colspan="5" class="text-center py-4 text-muted">No hay promociones registradas.</td></tr>
                         @endforelse

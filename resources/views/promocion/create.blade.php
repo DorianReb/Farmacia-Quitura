@@ -29,19 +29,23 @@
 
                     {{-- Porcentaje --}}
                     <div class="mb-3">
-                        <label for="porcentaje" class="form-label">Porcentaje <span class="text-danger">*</span></label>
+                        <label for="porcentaje" class="form-label">
+                            Porcentaje <span class="text-danger">*</span>
+                        </label>
                         <input type="number"
                                class="form-control @error('porcentaje') is-invalid @enderror"
                                id="porcentaje"
                                name="porcentaje"
                                value="{{ old('porcentaje') }}"
                                placeholder="Ej. 10"
-                               min="0" max="100"
+                               min="10" max="40" step="1.00"
                                required>
+                        <div class="form-text text-muted">El porcentaje debe estar entre 10% y 40%</div>
                         @error('porcentaje')
                         <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
+
 
                     {{-- Fecha inicio --}}
                     <div class="mb-3">
@@ -71,19 +75,22 @@
                         @enderror
                     </div>
 
-                    {{-- Autorizada por --}}
+                    {{-- Autorizada por (bloqueado y tomado de la sesión) --}}
                     <div class="mb-3">
-                        <label for="autorizada_por" class="form-label">Autorizada por <span class="text-danger">*</span></label>
-                        <select name="autorizada_por" id="autorizada_por" class="form-select @error('autorizada_por') is-invalid @enderror" required>
-                            <option value="">Selecciona un usuario</option>
-                            @foreach($usuarios as $usuario)
-                                <option value="{{ $usuario->id }}" {{ old('autorizada_por', $promocion->autorizada_por ?? '') == $usuario->id ? 'selected' : '' }}>
-                                    {{ $usuario->nombre_completo }}
-                                </option>
-                            @endforeach
-                        </select>
+                        <label class="form-label">Autorizada por <span class="text-danger">*</span></label>
+
+                        {{-- Visible (solo lectura) --}}
+                        <input type="text"
+                               class="form-control"
+                               value="{{ auth()->user()->nombre_completo ?? auth()->user()->name ?? 'Usuario autenticado' }}"
+                               disabled>
+
+                        {{-- Enviado al servidor (oculto) --}}
+                        <input type="hidden" name="autorizada_por" value="{{ auth()->id() }}">
+
+                        <div class="form-text">Este valor se toma automáticamente del usuario con sesión activa.</div>
                         @error('autorizada_por')
-                            <div class="invalid-feedback">{{ $message }}</div>
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
                     </div>
 
@@ -103,3 +110,17 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const inicio = document.getElementById('fecha_inicio');
+            const fin = document.getElementById('fecha_fin');
+
+            inicio.addEventListener('change', () => {
+                fin.min = inicio.value;  // 👈 fecha mínima igual a inicio
+            });
+        });
+    </script>
+@endpush
+

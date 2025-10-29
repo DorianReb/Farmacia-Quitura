@@ -73,6 +73,8 @@ class Producto extends Model
         return $this->hasMany(AsignaUbicacion::class, 'producto_id');
     }
 
+
+
     public function getImagenUrlAttribute(): string
     {
         // Si hay imagen almacenada, devolver la URL pública (storage link)

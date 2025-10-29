@@ -31,18 +31,23 @@
 
                     {{-- Porcentaje --}}
                     <div class="mb-3">
-                        <label for="porcentaje{{ $promocion->id }}" class="form-label">Porcentaje <span class="text-danger">*</span></label>
+                        <label for="porcentaje" class="form-label">
+                            Porcentaje <span class="text-danger">*</span>
+                        </label>
                         <input type="number"
                                class="form-control @error('porcentaje') is-invalid @enderror"
-                               id="porcentaje{{ $promocion->id }}"
+                               id="porcentaje"
                                name="porcentaje"
-                               value="{{ old('porcentaje', $promocion->porcentaje) }}"
-                               min="0" max="100"
+                               value="{{ old('porcentaje') }}"
+                               placeholder="Ej. 10"
+                               min="10" max="40" step="1.00"
                                required>
+                        <div class="form-text text-muted">El porcentaje debe estar entre 10% y 40%</div>
                         @error('porcentaje')
                         <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
+
 
                     {{-- Fecha inicio --}}
                     <div class="mb-3">

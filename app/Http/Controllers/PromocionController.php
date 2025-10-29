@@ -3,107 +3,105 @@
 namespace App\Http\Controllers;
 
 use App\Models\Promocion;
-use Illuminate\Http\Request;
-use App\Models\Producto; 
+use App\Models\Producto;
 use App\Models\AsignaPromocion;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class PromocionController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    public function __construct()
+    {
+        // Solo Admin/Superadmin pueden crear/editar/eliminar
+        $this->middleware('role:Administrador,Superadmin')->except(['index']);
+    }
+
     public function index(Request $request)
     {
-        // Promociones con búsqueda y paginación
+        // Búsqueda simple por porcentaje; si quieres por nombre del autorizador,
+        // crea la relación y haz whereHas sobre usuarios
         $query = Promocion::query();
 
         if ($request->q) {
             $q = $request->q;
-            $query->where('porcentaje', 'like', "%{$q}%")
-                ->orWhere('autorizada_por', 'like', "%{$q}%");
+            $query->where('porcentaje', 'like', "%{$q}%");
+            // ->orWhereHas('usuario', fn($qq) => $qq->where('nombre_completo','like',"%{$q}%"));
         }
 
-        $promociones = $query->orderBy('fecha_inicio', 'desc')->paginate(10);
-        $usuarios = \App\Models\User::whereIn('rol', ['Administrador', 'Superadmin'])
-                                     ->orderBy('nombre')
-                                     ->get();
-
-        // Asignaciones con relaciones cargadas
-        $asignaciones = AsignaPromocion::with(['promocion', 'lote.producto'])->paginate(10);
-
-        // Lotes con su producto para selects
-        $lotes = \App\Models\Lote::with('producto')->get();
+        $promociones     = $query->orderBy('fecha_inicio', 'desc')->paginate(10);
+        $asignaciones    = AsignaPromocion::with(['promocion', 'lote.producto'])->paginate(10);
+        $lotes           = \App\Models\Lote::with('producto')->get();
         $promociones_all = Promocion::all();
 
-        return view('promocion.index', compact('promociones', 'usuarios', 'asignaciones', 'lotes', 'promociones_all'));
+        return view('promocion.index', compact('promociones','asignaciones','lotes','promociones_all'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        $request->validate([
-            'porcentaje' => 'required|numeric|min:15|max:40',
-            'fecha_inicio' => 'required|date',
-            'fecha_fin' => 'required|date|after:fecha_inicio',
-            'autorizada_por' => 'required|string|max:200',
+        // (Opcional) seguridad por rol adicional
+        if (!in_array(Auth::user()->rol ?? null, ['Administrador','Superadmin'])) {
+            abort(403);
+        }
+
+        $data = $request->validate([
+            'porcentaje'    => ['required','numeric','between:10,40'],
+            'fecha_inicio'  => ['required','date'],
+            'fecha_fin'     => ['required','date','after:fecha_inicio'], // o after_or_equal
+            // 'autorizada_por' NO se toma del request
         ]);
 
-        Promocion::create($request->all());
+        // Forzar el autorizador desde la sesión
+        $data['autorizada_por'] = Auth::id();
 
-        return redirect()->route('promocion.index')
-                         ->with('success', 'Promoción creada correctamente')
-                         ->with('from_modal', 'create_promocion');
+        Promocion::create($data);
+
+        return redirect()
+            ->route('promocion.index')
+            ->with('success', 'Promoción creada correctamente')
+            ->with('from_modal', 'create_promocion');
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(Promocion $promocion)
     {
         return redirect()->route('promocion.index')
-                         ->withInput()
-                         ->with('from_modal', 'edit_promocion')
-                         ->with('edit_id', $promocion->id);
+            ->withInput()
+            ->with('from_modal', 'edit_promocion')
+            ->with('edit_id', $promocion->id);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, Promocion $promocion)
     {
-        $request->validate([
-            'porcentaje' => 'required|numeric|min:15|max:40',
-            'fecha_inicio' => 'required|date',
-            'fecha_fin' => 'required|date|after:fecha_inicio',
-            'autorizada_por' => 'required|string|max:200',
+        if (!in_array(Auth::user()->rol ?? null, ['Administrador','Superadmin'])) {
+            abort(403);
+        }
+
+        $data = $request->validate([
+            'porcentaje'    => ['required','numeric','between:10,40'],
+            'fecha_inicio'  => ['required','date'],
+            'fecha_fin'     => ['required','date','after:fecha_inicio'],
+            // No aceptamos 'autorizada_por' del cliente
         ]);
 
-        $promocion->update($request->all());
+        // Decisión de negocio:
+        // a) Mantener el autorizador original, o
+        // b) Registrar al usuario que hizo la última modificación:
+        $data['autorizada_por'] = Auth::id(); // opción (b)
+
+        $promocion->update($data);
 
         return redirect()->route('promocion.index')
-                         ->with('success', 'Promoción actualizada correctamente');
+            ->with('success', 'Promoción actualizada correctamente');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Promocion $promocion)
     {
+        if (!in_array(Auth::user()->rol ?? null, ['Administrador','Superadmin'])) {
+            abort(403);
+        }
+
         $promocion->delete();
 
         return redirect()->route('promocion.index')
-                         ->with('success', 'Promoción eliminada correctamente');
-    }
-
-    public function __construct()
-    {
-        // Aplica el middleware 'role' a todos los métodos excepto 'index'.
-        // Asumimos que tu middleware se llama 'role' y que acepta roles separados por coma o barra.
-        $this->middleware('role:Administrador,Superadmin')->except(['index']);
-        
-        // Si tienes un método 'create' separado para cargar la vista:
-        // $this->middleware('role:Administrador,Superadmin')->except(['index', 'show']); 
+            ->with('success', 'Promoción eliminada correctamente');
     }
 }

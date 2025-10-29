@@ -1,7 +1,16 @@
 @extends('layouts.sidebar-admin')
 
 @section('content')
-<div class="container-xxl">
+    @php
+        use Carbon\Carbon;
+        $fmtFechaHora = function($v) {
+            return $v
+                ? Carbon::parse($v)->timezone(config('app.timezone'))->format('d/m/y H:i')
+                : '—';
+        };
+    @endphp
+
+    <div class="container-xxl">
 
     {{-- ENCABEZADO Y TÍTULO --}}
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-3 mb-md-4 gap-3">
@@ -9,7 +18,7 @@
             <i class="fa-solid fa-clock-rotate-left"></i>
             <h1 class="h4 m-0">Historial de Transacciones</h1>
         </div>
-        
+
         {{-- Botón de Regreso a la Vista de Venta --}}
         <a href="{{ route('venta.index') }}" class="btn btn-secondary">
             <i class="fa-solid fa-cash-register me-1"></i> Ir a Vender
@@ -61,19 +70,19 @@
                     <tbody>
                         @forelse($ventas as $venta)
                         <tr>
-                            <td>{{ \Carbon\Carbon::parse($venta->fecha)->format('Y-m-d H:i') }}</td>
+                            <td>{{ \Carbon\Carbon::parse($venta->fecha)->format('d-m-Y H:i') }}</td>
                             <td>{{ $venta->usuario->nombreCompleto ?? 'N/A' }}</td>
                             <td class="text-end h6 m-0">${{ number_format($venta->total, 2) }}</td>
                             <td class="text-end">
-                                
+
                                 {{-- ACCIÓN 1: VER TICKET (Activa) --}}
-                                    <a href="#" onclick="event.preventDefault(); cargarTicketEnModal({{ $venta->id }})" 
+                                    <a href="#" onclick="event.preventDefault(); cargarTicketEnModal({{ $venta->id }})"
                                     class="btn btn-sm btn-info text-white rounded-pill shadow-sm" title="Ver Ticket">
                                         <i class="fa-solid fa-receipt"></i>
                                     </a>
                                 {{-- ACCIÓN 2: ANULAR VENTA (Formulario DELETE) --}}
                                 <form action="{{ route('venta.anular', $venta->id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de anular la venta #{{ $venta->id }}? Esto restaurará el stock.')">
-                                    @csrf 
+                                    @csrf
                                     @method('DELETE') {{-- Usamos DELETE para anular --}}
                                     <button type="submit" class="btn btn-sm btn-danger rounded-pill shadow-sm" title="Anular Venta">
                                         <i class="fa-solid fa-trash-can"></i>
@@ -93,7 +102,7 @@
                 </table>
             </div>
         </div>
-        
+
         {{-- Paginación --}}
         @if(isset($ventas) && method_exists($ventas, 'links'))
         <div class="card-footer bg-white border-0 pt-3 pb-2 d-flex justify-content-center">
@@ -149,7 +158,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!response.ok) throw new Error('No se pudo obtener la vista del ticket. Estado: ' + response.status);
 
             const htmlContent = await response.text();
-            
+
             // Inyectar el HTML dentro del modal
             ticketContent.innerHTML = htmlContent;
 

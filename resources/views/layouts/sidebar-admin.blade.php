@@ -83,13 +83,13 @@
             </div>
         </div>
 
-        {{-- === BOTÓN DASHBOARD (solo Superadmin y Administrador) === --}}
-        @if(in_array($user?->rol, ['Superadmin','Administrador']))
+        {{-- === BOTÓN DASHBOARD (Superadmin, Administrador y Vendedor) === --}}
+        @if(in_array($user?->rol, ['Superadmin','Administrador','Vendedor']))
             <div class="mb-3">
                 <a
                     href="{{ url('/home') }}"
                     class="btn w-100 rounded-pill d-flex align-items-center justify-content-center gap-2 shadow-sm
-                        {{ request()->is('home') ? 'btn-light text-dark' : 'btn-outline-light' }}"
+                {{ request()->is('home') ? 'btn-light text-dark' : 'btn-outline-light' }}"
                     aria-label="Ir al Dashboard"
                 >
                     <i class="fa-solid fa-house"></i>
@@ -145,7 +145,6 @@
                             <ul class="nav flex-column mt-1">
                                 <li class="nav-item"><a class="nav-link {{ request()->routeIs('producto.*') ? 'active' : '' }}" href="{{ route('producto.index') }}"><i class="fa-solid fa-pills"></i><span class="ms-2">Productos</span></a></li>
                                 <li class="nav-item"><a class="nav-link {{ request()->routeIs('lote.*') ? 'active' : '' }}" href="{{ route('lote.index') }}"><i class="fa-solid fa-box"></i><span class="ms-2">Lotes</span></a></li>
-                                <li class="nav-item"><a class="nav-link {{ request()->routeIs('asigna_componentes.*') ? 'active' : '' }}" href="{{ route('asigna_componentes.index') }}"><i class="fa-solid fa-diagram-project"></i><span class="ms-2">Asignar componentes</span></a></li>
                                 <li class="nav-item"><a class="nav-link {{ request()->routeIs('ubicacion.*') ? 'active' : '' }}" href="{{ route('ubicacion.index') }}"><i class="fa-solid fa-location-dot"></i><span class="ms-2">Ubicaciones</span></a></li>
                             </ul>
                         </div>

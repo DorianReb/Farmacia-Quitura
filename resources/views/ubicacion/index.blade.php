@@ -201,7 +201,7 @@
         <div class="d-flex justify-content-start mb-3">
             <button type="button" class="btn btn-success shadow-sm rounded-pill"
                     data-bs-toggle="modal"
-                    data-bs-target="#createUbicacionModal"  {{-- ojo al id, ver nota al final --}}
+                    data-bs-target="#createModalUbicacion"  {{-- ojo al id, ver nota al final --}}
                     title="Agregar nueva asignación">
                 <i class="fa-solid fa-plus"></i> Agregar Ubicación
             </button>
