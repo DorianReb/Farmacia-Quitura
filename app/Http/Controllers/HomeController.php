@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Models\Producto;
+use App\Models\AsignaComponente;
 
 class HomeController extends Controller
 {
@@ -25,7 +27,7 @@ class HomeController extends Controller
      */
     public function index()
     {
-        $hoy= Carbon::today();
+        $hoy   = Carbon::today();
         $desde = Carbon::now()->subDays(30);
 
         // ===== KPIs =====
@@ -54,10 +56,11 @@ class HomeController extends Controller
             'caducadas'       => $caducadas,
         ];
 
-        // ===== Próximos 5 a caducar =====
+        // ===== Próximos 5 a caducar (SOLO futuros / hoy) =====
         $proximosACaducar = DB::table('lotes as l')
             ->join('productos as p', 'p.id', '=', 'l.producto_id')
             ->where('l.cantidad', '>', 0)
+            ->whereDate('l.fecha_caducidad', '>=', $hoy) // evita caducados
             ->orderBy('l.fecha_caducidad')
             ->limit(5)
             ->get([
@@ -80,7 +83,7 @@ class HomeController extends Controller
             ->orderByDesc(DB::raw('SUM(dv.cantidad)'))
             ->limit(10)
             ->get([
-                'p.id',
+                'p.id as producto_id',
                 'p.nombre_comercial as producto',
                 DB::raw('SUM(dv.cantidad) as unidades')
             ]);
@@ -96,7 +99,7 @@ class HomeController extends Controller
             ->orderBy(DB::raw('SUM(dv.cantidad)'))
             ->limit(10)
             ->get([
-                'p.id',
+                'p.id as producto_id',
                 'p.nombre_comercial as producto',
                 DB::raw('SUM(dv.cantidad) as unidades')
             ]);
@@ -112,6 +115,86 @@ class HomeController extends Controller
                 'existencias',
                 'stock_minimo'
             ]);
+
+        // ===== Construir "resumen" de producto igual que en ProductoController =====
+
+        // 1) Juntar todos los IDs de producto que aparecen en el dashboard
+        $idsProductos = collect()
+            ->merge($proximosACaducar->pluck('producto_id'))
+            ->merge($topVendidos->pluck('producto_id'))
+            ->merge($menosVendidos->pluck('producto_id'))
+            ->merge($stockBajo->pluck('id')) // en stockBajo el id es de productos
+            ->filter()
+            ->unique()
+            ->values();
+
+        $resumenPorProducto = [];
+
+        if ($idsProductos->isNotEmpty()) {
+            // 2) Cargar productos con sus relaciones necesarias
+            $productosInfo = Producto::with(['formaFarmaceutica'])
+                ->whereIn('id', $idsProductos)
+                ->get()
+                ->keyBy('id');
+
+            // 3) Cargar asignaciones de componentes para esos productos
+            $asignaciones = AsignaComponente::with([
+                'componente:id,nombre',
+                'fuerzaUnidad:id,nombre',
+                'baseUnidad:id,nombre',
+            ])
+                ->whereIn('producto_id', $idsProductos)
+                ->get()
+                ->groupBy('producto_id');
+
+            // 4) Repetir la misma lógica de resumen que en ProductoController
+            foreach ($productosInfo as $producto) {
+                $componentesTxt = '';
+                if (isset($asignaciones[$producto->id])) {
+                    $componentesTxt = $asignaciones[$producto->id]
+                        ->map(function ($a) {
+                            $fuerza = rtrim(rtrim(number_format($a->fuerza_cantidad, 2, '.', ''), '0'), '.');
+                            $base   = rtrim(rtrim(number_format($a->base_cantidad, 2, '.', ''), '0'), '.');
+                            $fu     = $a->fuerzaUnidad->nombre ?? '';   // mg, ml, etc.
+                            $bu     = $a->baseUnidad->nombre ?? '';     // tableta, cápsula, etc.
+                            $comp   = $a->componente->nombre ?? '';
+                            return trim($comp.' '.trim($fuerza.' '.($fu ?: '')).' / '.trim($base.' '.($bu ?: '')));
+                        })
+                        ->implode(', ');
+                    $componentesTxt = $componentesTxt ? " {$componentesTxt}" : '';
+                }
+
+                $nombre      = trim($producto->nombre_comercial ?? '');
+                $descripcion = trim($producto->descripcion ?? '');
+                $contenido   = trim($producto->contenido ?? '');
+                $forma       = trim($producto->formaFarmaceutica->nombre ?? '');
+
+                $partes = array_filter([$nombre, $descripcion ?: null, $contenido ?: null, $forma ?: null]);
+
+                $resumenPorProducto[$producto->id] = trim(implode(' ', $partes).$componentesTxt);
+            }
+        }
+
+        // 5) Adjuntar el resumen a cada colección usada en el dashboard
+        $proximosACaducar->transform(function ($row) use ($resumenPorProducto) {
+            $row->producto_resumen = $resumenPorProducto[$row->producto_id] ?? $row->producto;
+            return $row;
+        });
+
+        $topVendidos->transform(function ($row) use ($resumenPorProducto) {
+            $row->producto_resumen = $resumenPorProducto[$row->producto_id] ?? $row->producto;
+            return $row;
+        });
+
+        $menosVendidos->transform(function ($row) use ($resumenPorProducto) {
+            $row->producto_resumen = $resumenPorProducto[$row->producto_id] ?? $row->producto;
+            return $row;
+        });
+
+        $stockBajo->transform(function ($row) use ($resumenPorProducto) {
+            $row->producto_resumen = $resumenPorProducto[$row->id] ?? $row->producto;
+            return $row;
+        });
 
         return view('home', compact(
             'kpis',

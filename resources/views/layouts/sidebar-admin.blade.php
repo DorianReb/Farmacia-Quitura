@@ -12,6 +12,15 @@
     {{-- Tu compilación (SCSS + JS) --}}
     @vite(['resources/sass/app.scss', 'resources/js/app.js'])
 
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+
+
+
     <style>
         /* Ajustes visuales del sidebar */
         .sidebar {
@@ -215,13 +224,45 @@
 
                         <div id="menuReportes" class="collapse ms-2" data-bs-parent="#sidebarMenu">
                             <ul class="nav flex-column mt-1">
-                                <li class="nav-item"><a class="nav-link" href="#"><i class="fa-solid fa-chart-line"></i><span class="ms-2">Rentabilidad</span></a></li>
-                                <li class="nav-item"><a class="nav-link" href="#"><i class="fa-solid fa-trophy"></i><span class="ms-2">Ranking</span></a></li>
-                                <li class="nav-item"><a class="nav-link" href="#"><i class="fa-solid fa-calendar-xmark"></i><span class="ms-2">Caducidad</span></a></li>
-                                <li class="nav-item"><a class="nav-link" href="#"><i class="fa-solid fa-triangle-exclamation"></i><span class="ms-2">Stock Bajo</span></a></li>
-                                <li class="nav-item"><a class="nav-link" href="#"><i class="fa-solid fa-ban"></i><span class="ms-2">Sin Ventas</span></a></li>
+
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ route('reportes.rentabilidad') }}">
+                                        <i class="fa-solid fa-chart-line"></i>
+                                        <span class="ms-2">Rentabilidad</span>
+                                    </a>
+                                </li>
+
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ route('reportes.ranking') }}">
+                                        <i class="fa-solid fa-trophy"></i>
+                                        <span class="ms-2">Ranking</span>
+                                    </a>
+                                </li>
+
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ route('reportes.caducidad') }}">
+                                        <i class="fa-solid fa-calendar-xmark"></i>
+                                        <span class="ms-2">Caducidad</span>
+                                    </a>
+                                </li>
+
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ route('reportes.stock_bajo') }}">
+                                        <i class="fa-solid fa-triangle-exclamation"></i>
+                                        <span class="ms-2">Stock Bajo</span>
+                                    </a>
+                                </li>
+
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ route('reportes.sin_ventas') }}">
+                                        <i class="fa-solid fa-ban"></i>
+                                        <span class="ms-2">Sin Ventas</span>
+                                    </a>
+                                </li>
+
                             </ul>
                         </div>
+
                     </li>
 
                     {{-- Administración (solo Superadmin) --}}

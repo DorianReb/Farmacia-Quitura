@@ -24,7 +24,10 @@
     </style>
 
     @php
+        use Carbon\Carbon;
         $rol = Auth::user()->rol ?? null;
+        // Asegurar que exista la colección (por si acaso)
+        $promosPorLote = $promosPorLote ?? collect();
     @endphp
 
     <div class="container-xxl">
@@ -56,7 +59,7 @@
             <form method="GET" action="{{ route('lote.index') }}" class="d-inline-block" style="min-width:300px;max-width:480px;width:100%;">
                 <div class="input-group">
                     <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
-                    <input type="search" name="q" value="{{ request('q') }}" class="form-control" placeholder="Buscar por código o producto…">
+                    <input type="search" name="q" value="{{ request('q') }}" class="form-control" placeholder="Buscar por cualquier campo (código, producto, fechas, usuario, cantidad, precio)…">
                     @if(request('q'))
                         <a href="{{ route('lote.index') }}" class="btn btn-outline-secondary" title="Limpiar búsqueda">
                             <i class="fa-regular fa-circle-xmark"></i>
@@ -90,6 +93,8 @@
                             <th>Código</th>
                             <th>Producto</th>
                             <th style="width:120px;">Fecha caducidad</th>
+                            <th style="width:120px;">Estado</th> {{-- 👈 NUEVA COLUMNA --}}
+                            <th style="width:150px;">Promoción activa</th> {{-- 👈 NUEVA COLUMNA --}}
                             <th style="width:100px;">Cantidad</th>
                             <th>Precio compra</th>
                             <th>Fecha entrada</th>
@@ -101,10 +106,76 @@
                         </thead>
                         <tbody>
                         @forelse($lotes as $lote)
+                            @php
+                                $fechaCad = $lote->fecha_caducidad ? Carbon::parse($lote->fecha_caducidad) : null;
+                                $hoy = Carbon::today();
+
+                                // Obtener promociones activas para este lote
+                                $promosLote = $promosPorLote[$lote->id] ?? collect();
+                                // Si hubiera más de una, tomamos la de mayor porcentaje (por si acaso)
+                                $promoActiva = $promosLote->sortByDesc(function($a) {
+                                    return $a->promocion->porcentaje ?? 0;
+                                })->first();
+                            @endphp
                             <tr>
                                 <td class="fw-semibold">{{ $lote->codigo }}</td>
-                                <td>{{ $lote->producto->nombre_comercial ?? '—' }}</td>
-                                <td>{{ $lote->fecha_caducidad ?? '—' }}</td>
+                                <td>{{ $lote->producto->resumen ?? $lote->producto->nombre_comercial ?? '—' }}</td>
+
+                                {{-- Fecha de caducidad --}}
+                                <td>
+                                    @if($fechaCad)
+                                        {{ $fechaCad->format('d/m/Y') }}
+                                    @else
+                                        —
+                                    @endif
+                                </td>
+
+                                {{-- Estado (Vigente / Vencido) --}}
+                                <td>
+                                    @if($fechaCad)
+                                        @if($fechaCad->isPast())
+                                            <span class="badge bg-danger">Vencido</span>
+                                        @else
+                                            <span class="badge bg-success">Vigente</span>
+                                        @endif
+                                    @else
+                                        <span class="badge bg-secondary">Sin fecha</span>
+                                    @endif
+                                </td>
+
+                                {{-- Promoción activa / historial --}}
+                                <td>
+                                    @php
+                                        // Colección de asignaciones de promoción de este lote
+                                        $promosLote = $promosPorLote[$lote->id] ?? collect();
+
+                                        // Elegimos la promoción "más reciente" por fecha_inicio
+                                        $asigRelevante = $promosLote->sortByDesc(function($a) {
+                                            return $a->promocion->fecha_inicio ?? '0000-00-00';
+                                        })->first();
+                                    @endphp
+
+                                    @if($asigRelevante && $asigRelevante->promocion)
+                                        @php
+                                            $p = $asigRelevante->promocion;
+                                            $hoy = \Carbon\Carbon::today()->toDateString();
+                                            $vigente = ($p->fecha_inicio <= $hoy && $p->fecha_fin >= $hoy);
+                                        @endphp
+
+                                        <span class="badge bg-warning text-dark me-1">
+            {{ number_format($p->porcentaje, 2) }}%
+        </span>
+
+                                        @if($vigente)
+                                            <span class="badge bg-success">Vigente</span>
+                                        @else
+                                            <span class="badge bg-secondary">No vigente</span>
+                                        @endif
+                                    @else
+                                        <span class="text-muted">Sin promoción</span>
+                                    @endif
+                                </td>
+
                                 <td>{{ $lote->cantidad ?? '0' }}</td>
                                 <td>${{ number_format($lote->precio_compra ?? 0, 2) }}</td>
                                 <td>{{ $lote->fecha_entrada ?? '—' }}</td>
@@ -123,8 +194,9 @@
                                             </button>
 
                                             {{-- Eliminar --}}
-                                            <form action="{{ route('lote.destroy', $lote) }}" method="POST" class="d-inline"
-                                                  onsubmit="return confirm('¿Eliminar lote?')">
+                                            <form action="{{ route('lote.destroy', $lote) }}"
+                                                  method="POST"
+                                                  class="d-inline form-delete">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button class="btn btn-danger shadow-sm rounded-pill btn-icon ms-1"
@@ -139,7 +211,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ in_array($rol, ['Administrador','Superadmin']) ? 8 : 7 }}" class="text-center py-4 text-muted">
+                                <td colspan="{{ in_array($rol, ['Administrador','Superadmin']) ? 10 : 9 }}" class="text-center py-4 text-muted">
                                     No hay lotes registrados.
                                 </td>
                             </tr>
@@ -167,6 +239,8 @@
         </div>
     </div>
 
+
+
     {{-- Modal de creación: solo Admin/Superadmin --}}
     @if(in_array($rol, ['Administrador','Superadmin']))
         @include('lote.create')
@@ -179,7 +253,11 @@
         @endforeach
     @endif
 
-    @if ($errors->any() && session('from_modal') === 'edit_lote' && session('edit_id'))
+    @php
+        $fromModal = old('from_modal') ?? session('from_modal');
+    @endphp
+
+    @if ($errors->any() && $fromModal === 'edit_lote' && session('edit_id'))
         <script>
             document.addEventListener('DOMContentLoaded', () => {
                 const el = document.getElementById('editModal{{ session('edit_id') }}');
@@ -187,4 +265,40 @@
             });
         </script>
     @endif
+
+    @if ($errors->any() && $fromModal === 'create_lote')
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const el = document.getElementById('createModal');
+                if (el) {
+                    const modal = new bootstrap.Modal(el);
+                    modal.show();
+                }
+            });
+        </script>
+    @endif
+
+    @if ($errors->has('procedimiento') && $fromModal === 'create_lote')
+        @push('scripts')
+            <script>
+                document.addEventListener('DOMContentLoaded', () => {
+                    const el = document.getElementById('createModal');
+                    if (el) {
+                        const modal = new bootstrap.Modal(el);
+                        modal.show();
+                    }
+
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error al registrar lote',
+                            text: @json($errors->first('procedimiento')),
+                        });
+                    }
+                });
+            </script>
+        @endpush
+    @endif
+
+
 @endsection

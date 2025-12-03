@@ -110,7 +110,10 @@
             </div>
             <div class="col-md-4">
               <label for="existencias_{{ $producto->id }}" class="form-label">Existencias actuales</label>
-              <input type="number" class="form-control" id="existencias_{{ $producto->id }}" name="existencias" value="{{ old('existencias', $producto->existencias) }}" min="0">
+                <input type="number" class="form-control"
+                       id="existencias_{{ $producto->id }}"
+                       value="{{ $producto->existencias }}"
+                       disabled>
             </div>
           </div>
 

@@ -61,64 +61,70 @@
                         @enderror
                     </div>
 
-                    {{-- Fecha de caducidad --}}
+                    {{-- FECHA DE CADUCIDAD --}}
                     <div class="mb-3">
-                        <label for="fecha_caducidad_{{ $lote->id }}" class="form-label">Fecha de caducidad</label>
+                        <label class="form-label">Fecha de caducidad <span class="text-danger">*</span></label>
                         <input
-                            type="date"
+                            type="text"
                             name="fecha_caducidad"
                             id="fecha_caducidad_{{ $lote->id }}"
-                            class="form-control @error('fecha_caducidad') is-invalid @enderror"
-                            value="{{ old('fecha_caducidad', $lote->fecha_caducidad) }}">
+                            class="form-control js-date-caducidad @error('fecha_caducidad') is-invalid @enderror"
+                            value="{{ old('fecha_caducidad', $lote->fecha_caducidad ? \Carbon\Carbon::parse($lote->fecha_caducidad)->format('d-m-Y') : '') }}"
+                            readonly
+                            required
+                        >
                         @error('fecha_caducidad')
                         <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
 
+
                     {{-- Precio de compra --}}
                     <div class="mb-3">
-                        <label for="precio_compra_{{ $lote->id }}" class="form-label">Precio de compra ($)</label>
+                        <label class="form-label">Precio de compra ($)</label>
                         <input
                             type="number"
                             step="0.01"
                             min="0"
-                            name="precio_compra"
-                            id="precio_compra_{{ $lote->id }}"
-                            class="form-control @error('precio_compra') is-invalid @enderror"
-                            value="{{ old('precio_compra', $lote->precio_compra) }}">
-                        @error('precio_compra')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                            class="form-control"
+                            value="{{ $lote->precio_compra }}"
+                            disabled
+                        >
+                        <div class="form-text text-muted">
+                            El precio de compra no puede ser modificado. Si hubo un error, realiza un ajuste de inventario.
+                        </div>
                     </div>
+
 
                     {{-- Cantidad --}}
                     <div class="mb-3">
-                        <label for="cantidad_{{ $lote->id }}" class="form-label">Cantidad</label>
+                        <label class="form-label">Cantidad</label>
                         <input
                             type="number"
                             min="0"
-                            name="cantidad"
-                            id="cantidad_{{ $lote->id }}"
-                            class="form-control @error('cantidad') is-invalid @enderror"
-                            value="{{ old('cantidad', $lote->cantidad) }}">
-                        @error('cantidad')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                            class="form-control"
+                            value="{{ $lote->cantidad }}"
+                            disabled
+                        >
+                        <div class="form-text text-muted">
+                            La cantidad no puede cambiarse una vez creado el lote.
+                            Realiza un ajuste de inventario si necesitas corregirla.
+                        </div>
                     </div>
 
-                    {{-- Fecha de entrada --}}
+
+                    {{-- FECHA DE ENTRADA (solo informativa) --}}
                     <div class="mb-3">
-                        <label for="fecha_entrada_{{ $lote->id }}" class="form-label">Fecha de entrada</label>
-                        <input
-                            type="date"
-                            name="fecha_entrada"
-                            id="fecha_entrada_{{ $lote->id }}"
-                            class="form-control @error('fecha_entrada') is-invalid @enderror"
-                            value="{{ old('fecha_entrada', $lote->fecha_entrada) }}">
-                        @error('fecha_entrada')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                        <label class="form-label">Fecha de entrada</label>
+                        <input type="text"
+                               class="form-control"
+                               value="{{ $lote->fecha_entrada }}"
+                               disabled>
+                        <div class="form-text">
+                            Fecha en la que se registró originalmente este lote.
+                        </div>
                     </div>
+
 
                     {{-- Footer --}}
                     <div class="modal-footer">

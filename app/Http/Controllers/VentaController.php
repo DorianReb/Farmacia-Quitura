@@ -21,7 +21,7 @@ class VentaController extends Controller
 
         // Lógica para obtener productos basados en el nombre comercial (búsqueda principal)
         $productosBuscados = Producto::query()
-            ->with(['lotes']) 
+            ->with(['lotes'])
             ->when($q, function ($query) use ($q) {
                 $query->where('nombre_comercial', 'LIKE', "%{$q}%")
                     ->orWhere('codigo_barras', 'LIKE', "{$q}");
@@ -31,7 +31,7 @@ class VentaController extends Controller
 
         // Bandera para la apertura del modal (solo si hay query y resultados)
         $abrirModalMenu = ($q && $productosBuscados->count() > 0) ? true : false;
-        
+
         return view('venta.index', compact('productosBuscados', 'productoEncontrado', 'itemsEnVenta', 'totalVenta', 'q', 'abrirModalMenu'));
     }
 
@@ -44,24 +44,28 @@ class VentaController extends Controller
             'formaFarmaceutica',
             'categoria',
             'asignaUbicaciones.nivel.pasillo',
-            'asignaComponentes.componente'
+            'asignaComponentes.componente',
+            'asignaComponentes.fuerzaUnidad',
+            'asignaComponentes.baseUnidad',
         ])
-        ->where('codigo_barras', $codigo)
-        ->first();
+            ->where('codigo_barras', $codigo)
+            ->first();
 
         if (!$producto) {
             return response()->json(['message' => 'Producto no encontrado'], 404);
         }
 
+        // === Existencias calculadas por lotes ===
         $producto->existencias_calculadas = $producto->lotes->sum('cantidad');
-        $producto->lotes = $producto->lotes->sortBy('fecha_caducidad')->values();
 
+        // Orden FEFO: por fecha de caducidad
+        $producto->lotes = $producto->lotes
+            ->sortBy('fecha_caducidad')
+            ->values();
+
+        // === Ubicaciones ===
         $producto->asigna_ubicaciones = $producto->asignaUbicaciones ?? collect();
         $producto->asigna_componentes = $producto->asignaComponentes ?? collect();
-        $producto->forma_farmaceutica = $producto->formaFarmaceutica ?? null;
-
-        $primerComponente = $producto->asigna_componentes->first();
-        $producto->nombre_cientifico = $primerComponente?->componente?->nombre ?? null;
 
         $ubicacionesFormateadas = [];
         foreach ($producto->asigna_ubicaciones as $asignacion) {
@@ -70,14 +74,43 @@ class VentaController extends Controller
                 $ubicacionesFormateadas[] = $nivelNombreCompleto;
             }
         }
-
         $producto->ubicaciones_texto = implode(', ', array_unique($ubicacionesFormateadas));
-        
+
+        // === Componentes + dosis (para "Nombre científico") ===
+        $componentesTxt = $producto->asigna_componentes
+            ->map(function ($a) {
+                $fuerza = rtrim(rtrim(number_format($a->fuerza_cantidad, 2, '.', ''), '0'), '.');
+                $base   = rtrim(rtrim(number_format($a->base_cantidad, 2, '.', ''), '0'), '.');
+                $fu     = $a->fuerzaUnidad->nombre ?? '';   // mg, ml, etc.
+                $bu     = $a->baseUnidad->nombre ?? '';     // tableta, cápsula, ml, etc.
+                $comp   = $a->componente->nombre ?? '';
+
+                // Ej: "Paracetamol 500 mg / 1 tableta"
+                return trim($comp.' '.trim($fuerza.' '.($fu ?: '')).' / '.trim($base.' '.($bu ?: '')));
+            })
+            ->filter()
+            ->implode(', ');
+
+        $producto->componentes_texto = $componentesTxt ?: null;
+
+        // Si quieres, también puedes sobreescribir nombre_cientifico con eso:
+        $producto->nombre_cientifico = $producto->componentes_texto;
+
+        // === Contenido (solo "20 tabletas", "40 cápsulas", etc.) ===
+        // Aquí simplemente devolvemos el campo tal cual lo tengas en BD.
+        // Si actualmente lo guardas como "20.00" puedes ajustar los datos
+        // en BD o formatear:
+        if (is_numeric($producto->contenido)) {
+            $producto->contenido = rtrim(rtrim(number_format($producto->contenido, 2, '.', ''), '0'), '.');
+        }
+
+        // Limpiar relaciones para no mandar demasiada info
         $producto->unsetRelation('asignaUbicaciones');
         $producto->unsetRelation('asignaComponentes');
 
         return response()->json($producto);
     }
+
 
     /**
      * Store a newly created resource in storage.
@@ -85,73 +118,64 @@ class VentaController extends Controller
      */
     public function store(Request $request)
     {
-        // 🚨 CAMBIO CLAVE: Asumimos que los datos vienen en formato JSON en el cuerpo.
-        // Si usamos fetch con Content-Type: application/json, Laravel pone el cuerpo en $request->json().
+        // 1) Validar que vengan las líneas de productos del formulario
         $data = $request->validate([
-            'productos' => 'required|array|min:1',
+            'productos'                 => 'required|array|min:1',
             'productos.*.codigo_barras' => 'required|string',
-            'productos.*.cantidad' => 'required|integer|min:1',
-            'productos.*.lote' => 'required|integer' // El ID del lote
+            'productos.*.cantidad'      => 'required|integer|min:1',
+            'productos.*.lote_id'       => 'required|integer|exists:lotes,id',
         ]);
-        
-        // Iniciamos la transacción de base de datos
-        DB::beginTransaction();
+
+        // 2) Convertir el arreglo PHP a la estructura que espera el procedure:
+        //    [{lote_id, cantidad}, ...]
+        $lineas = [];
+        foreach ($data['productos'] as $p) {
+            $lineas[] = [
+                'lote_id'  => (int) $p['lote_id'],
+                'cantidad' => (int) $p['cantidad'],
+            ];
+        }
 
         try {
-            $venta = Venta::create([
-                'usuario_id' => Auth::id(),
-                'fecha' => now(),
-                'total' => 0
-            ]);
+            // 3) Llamar al procedure con el usuario actual y el JSON de líneas
+            $resultado = DB::select(
+                'CALL registrar_venta_multilote(?, ?)',
+                [
+                    Auth::id(),
+                    json_encode($lineas),
+                ]
+            );
 
-            $total = 0;
-            $productosVendidos = $data['productos']; // Usamos el array validado
+            $row = $resultado[0] ?? null;
+            $ventaId = $row->venta_id ?? null;
+            $total   = $row->total ?? null;
 
-            foreach ($productosVendidos as $p) {
-                // 1. Encontrar el lote y verificar stock
-                $lote = Lote::find($p['lote']);
-                if (!$lote || $lote->cantidad < $p['cantidad']) {
-                     DB::rollBack();
-                     return response()->json(['message' => 'Stock insuficiente para lote ' . $p['lote'] . '.'], 422);
-                }
+            return redirect()
+                ->route('venta.index')
+                ->with('success', "Venta registrada correctamente. ID: {$ventaId}, Total: $".number_format($total, 2));
 
-                // 2. Obtener producto relacionado
-                $producto = $lote->producto;
+        } catch (\Illuminate\Database\QueryException $e) {
 
-                // 3. Calcular y crear detalle
-                $subtotal = $p['cantidad'] * $producto->precio_venta;
+            $sqlState = $e->errorInfo[0] ?? null;
+            $msg      = $e->errorInfo[2] ?? $e->getMessage();
 
-                DetalleVenta::create([
-                    'venta_id' => $venta->id,
-                    'lote_id' => $lote->id,
-                    'cantidad' => $p['cantidad'],
-                    'subtotal' => $subtotal
-                ]);
-
-                $total += $subtotal;
-
-                // 4. Reducir stock del lote
-                $lote->cantidad -= $p['cantidad'];
-                $lote->save();
+            // Errores de negocio disparados por SIGNAL SQLSTATE '45000'
+            if ($sqlState === '45000') {
+                return redirect()
+                    ->back()
+                    ->withErrors(['venta' => $msg])
+                    ->withInput();
             }
 
-            // 5. Guardar total de la venta y commit
-            $venta->total = $total;
-            $venta->save();
-            
-            DB::commit();
-
-            return response()->json([
-                'message' => 'Venta registrada correctamente',
-                'venta_id' => $venta->id
-            ]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            // Esto atrapará errores como el de SQLSTATE (si no se reduce el stock)
-            return response()->json(['message' => 'Fallo interno al procesar la venta: ' . $e->getMessage()], 500);
+            // Otros errores (sintaxis, conexión, etc.)
+            return redirect()
+                ->back()
+                ->withErrors(['venta' => 'Error interno al registrar la venta: '.$msg])
+                ->withInput();
         }
     }
+
+
 
     public function historial(Request $request)
     {
@@ -220,6 +244,6 @@ class VentaController extends Controller
     {
         $venta->load('detalles.lote.producto', 'usuario');
         // CAMBIO CLAVE: Devolver la vista como HTML puro (renderizado) para inyectar en AJAX.
-        return view('venta.ticket', compact('venta'))->render(); 
+        return view('venta.ticket', compact('venta'))->render();
     }
 }

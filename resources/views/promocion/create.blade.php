@@ -50,12 +50,14 @@
                     {{-- Fecha inicio --}}
                     <div class="mb-3">
                         <label for="fecha_inicio" class="form-label">Fecha de inicio <span class="text-danger">*</span></label>
-                        <input type="date"
-                               class="form-control @error('fecha_inicio') is-invalid @enderror"
-                               id="fecha_inicio"
-                               name="fecha_inicio"
-                               value="{{ old('fecha_inicio') }}"
-                               required>
+                        <input
+                            type="text"
+                            id="fecha_inicio"
+                            name="fecha_inicio"
+                            class="form-control js-date-promo-inicio @error('fecha_inicio') is-invalid @enderror"
+                            value="{{ old('fecha_inicio') }}"
+                            readonly
+                            required>
                         @error('fecha_inicio')
                         <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -64,28 +66,30 @@
                     {{-- Fecha fin --}}
                     <div class="mb-3">
                         <label for="fecha_fin" class="form-label">Fecha de fin <span class="text-danger">*</span></label>
-                        <input type="date"
-                               class="form-control @error('fecha_fin') is-invalid @enderror"
-                               id="fecha_fin"
-                               name="fecha_fin"
-                               value="{{ old('fecha_fin') }}"
-                               required>
+                        <input
+                            type="text"
+                            id="fecha_fin"
+                            name="fecha_fin"
+                            class="form-control js-date-promo-fin @error('fecha_fin') is-invalid @enderror"
+                            value="{{ old('fecha_fin') }}"
+                            readonly
+                            required>
                         @error('fecha_fin')
                         <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
 
-                    {{-- Autorizada por (bloqueado y tomado de la sesión) --}}
+
+                    {{-- Autorizada por (informativo) --}}
                     <div class="mb-3">
-                        <label class="form-label">Autorizada por <span class="text-danger">*</span></label>
+                        <label class="form-label">Autorizada por</label>
+                        <input type="text" class="form-control"
+                               value="{{ Auth::user()->nombre_completo ?? Auth::user()->email }}" readonly>
+                        <small class="text-muted">Se asignará automáticamente al crear.</small>
+                    </div>
 
-                        {{-- Visible (solo lectura) --}}
-                        <input type="text"
-                               class="form-control"
-                               value="{{ auth()->user()->nombre_completo ?? auth()->user()->name ?? 'Usuario autenticado' }}"
-                               disabled>
 
-                        {{-- Enviado al servidor (oculto) --}}
+                    {{-- Enviado al servidor (oculto) --}}
                         <input type="hidden" name="autorizada_por" value="{{ auth()->id() }}">
 
                         <div class="form-text">Este valor se toma automáticamente del usuario con sesión activa.</div>

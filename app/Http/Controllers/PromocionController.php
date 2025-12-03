@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Promocion;
 use App\Models\Producto;
+use App\Models\AsignaComponente;
 use App\Models\AsignaPromocion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
+
 
 class PromocionController extends Controller
 {
@@ -18,37 +21,133 @@ class PromocionController extends Controller
 
     public function index(Request $request)
     {
-        // Búsqueda simple por porcentaje; si quieres por nombre del autorizador,
-        // crea la relación y haz whereHas sobre usuarios
-        $query = Promocion::query();
+        $query = Promocion::query()->with('usuario');
 
         if ($request->q) {
             $q = $request->q;
-            $query->where('porcentaje', 'like', "%{$q}%");
-            // ->orWhereHas('usuario', fn($qq) => $qq->where('nombre_completo','like',"%{$q}%"));
+            $query->where('porcentaje', 'like', "%{$q}%")
+                ->orWhereHas('usuario', fn($qq) =>
+                $qq->whereRaw("CONCAT_WS(' ', nombre, apellido_paterno, apellido_materno) LIKE ?", ["%{$q}%"])
+                );
         }
 
-        $promociones     = $query->orderBy('fecha_inicio', 'desc')->paginate(10);
-        $asignaciones    = AsignaPromocion::with(['promocion', 'lote.producto'])->paginate(10);
-        $lotes           = \App\Models\Lote::with('producto')->get();
-        $promociones_all = Promocion::all();
+        $promociones  = $query->orderBy('fecha_inicio', 'desc')->paginate(10);
 
-        return view('promocion.index', compact('promociones','asignaciones','lotes','promociones_all'));
+        $asignaciones = AsignaPromocion::with(['promocion', 'lote.producto.formaFarmaceutica'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+
+        $hoy    = Carbon::today();
+        $limite = $hoy->copy()->addDays(90);
+
+        $lotes = \App\Models\Lote::with(['producto.formaFarmaceutica'])
+            ->whereNotNull('fecha_caducidad')
+            ->whereBetween('fecha_caducidad', [$hoy->toDateString(), $limite->toDateString()])
+            ->orderBy('fecha_caducidad', 'asc')
+            ->get();
+
+        // ================== RESUMEN DE PRODUCTO PARA LOS LOTES (MISMA LÓGICA) ==================
+        $productoIds = $lotes->pluck('producto_id')->filter()->unique();
+
+        $asignacionesComponentes = $productoIds->isEmpty()
+            ? collect()
+            : AsignaComponente::with([
+                'componente:id,nombre',
+                'fuerzaUnidad:id,nombre',
+                'baseUnidad:id,nombre',
+            ])
+                ->whereIn('producto_id', $productoIds)
+                ->get()
+                ->groupBy('producto_id');
+
+        foreach ($lotes as $lote) {
+            if (!$lote->producto) {
+                continue;
+            }
+
+            $p = $lote->producto;
+
+            $componentesTxt = '';
+            if (isset($asignacionesComponentes[$p->id])) {
+                $componentesTxt = $asignacionesComponentes[$p->id]
+                    ->map(function ($a) {
+                        $fuerza = rtrim(rtrim(number_format($a->fuerza_cantidad, 2, '.', ''), '0'), '.');
+                        $base   = rtrim(rtrim(number_format($a->base_cantidad, 2, '.', ''), '0'), '.');
+                        $fu     = $a->fuerzaUnidad->nombre ?? '';
+                        $bu     = $a->baseUnidad->nombre ?? '';
+                        $comp   = $a->componente->nombre ?? '';
+                        return trim($comp.' '.trim($fuerza.' '.($fu ?: '')).' / '.trim($base.' '.($bu ?: '')));
+                    })
+                    ->implode(', ');
+
+                $componentesTxt = $componentesTxt ? " {$componentesTxt}" : '';
+            }
+
+            $nombre      = trim($p->nombre_comercial ?? '');
+            $descripcion = trim($p->descripcion ?? '');
+            $contenido   = trim($p->contenido ?? '');
+            $forma       = trim($p->formaFarmaceutica->nombre ?? '');
+
+            $partes = array_filter([
+                $nombre,
+                $descripcion ?: null,
+                $contenido   ?: null,
+                $forma       ?: null,
+            ]);
+
+            $p->resumen = trim(implode(' ', $partes).$componentesTxt);
+        }
+        // =======================================================================
+
+        // Promociones vigentes para combos, etc.
+        $promociones_all = Promocion::whereDate('fecha_inicio', '<=', $hoy)
+            ->whereDate('fecha_fin', '>=', $hoy)
+            ->orderBy('fecha_fin', 'asc')
+            ->orderBy('porcentaje', 'asc')
+            ->get();
+
+        return view('promocion.index', compact(
+            'promociones',
+            'asignaciones',
+            'lotes',
+            'promociones_all'
+        ));
     }
+
+
+
+
 
     public function store(Request $request)
     {
         // (Opcional) seguridad por rol adicional
-        if (!in_array(Auth::user()->rol ?? null, ['Administrador','Superadmin'])) {
+        if (!in_array(Auth::user()->rol ?? null, ['Administrador','Superadmin']))
+        {
             abort(403);
         }
 
         $data = $request->validate([
             'porcentaje'    => ['required','numeric','between:10,40'],
-            'fecha_inicio'  => ['required','date'],
-            'fecha_fin'     => ['required','date','after:fecha_inicio'], // o after_or_equal
-            // 'autorizada_por' NO se toma del request
+
+            'fecha_inicio'  => ['required','date_format:d-m-Y'],
+
+            'fecha_fin'     => [
+                'required',
+                'date_format:d-m-Y',
+                function ($attribute, $value, $fail) use ($request) {
+                    $inicio = Carbon::createFromFormat('d-m-Y', $request->fecha_inicio);
+                    $fin    = Carbon::createFromFormat('d-m-Y', $value);
+
+                    if ($fin->lt($inicio)) {
+                        $fail('La fecha de fin debe ser mayor o igual a la fecha de inicio.');
+                    }
+                }
+            ],
         ]);
+
+        // Convertir a formato BD (Y-m-d)
+        $data['fecha_inicio'] = Carbon::createFromFormat('d-m-Y', $data['fecha_inicio'])->format('Y-m-d');
+        $data['fecha_fin']    = Carbon::createFromFormat('d-m-Y', $data['fecha_fin'])->format('Y-m-d');
 
         // Forzar el autorizador desde la sesión
         $data['autorizada_por'] = Auth::id();
@@ -77,17 +176,32 @@ class PromocionController extends Controller
 
         $data = $request->validate([
             'porcentaje'    => ['required','numeric','between:10,40'],
-            'fecha_inicio'  => ['required','date'],
-            'fecha_fin'     => ['required','date','after:fecha_inicio'],
-            // No aceptamos 'autorizada_por' del cliente
+
+            'fecha_inicio'  => ['required','date_format:d-m-Y'],
+
+            'fecha_fin'     => [
+                'required',
+                'date_format:d-m-Y',
+                function ($attribute, $value, $fail) use ($request) {
+                    $inicio = Carbon::createFromFormat('d-m-Y', $request->fecha_inicio);
+                    $fin    = Carbon::createFromFormat('d-m-Y', $value);
+
+                    if ($fin->lt($inicio)) {
+                        $fail('La fecha de fin debe ser mayor o igual a la fecha de inicio.');
+                    }
+                }
+            ],
         ]);
 
-        // Decisión de negocio:
-        // a) Mantener el autorizador original, o
-        // b) Registrar al usuario que hizo la última modificación:
-        $data['autorizada_por'] = Auth::id(); // opción (b)
+        // Convertir a formato BD
+        $data['fecha_inicio'] = Carbon::createFromFormat('d-m-Y', $data['fecha_inicio'])->format('Y-m-d');
+        $data['fecha_fin']    = Carbon::createFromFormat('d-m-Y', $data['fecha_fin'])->format('Y-m-d');
+
+        // Registrar quién modificó
+        $data['autorizada_por'] = Auth::id();
 
         $promocion->update($data);
+
 
         return redirect()->route('promocion.index')
             ->with('success', 'Promoción actualizada correctamente');

@@ -50,7 +50,7 @@
                             name="correo"
                             value="{{ old('correo') }}"
                             class="form-control @error('correo') is-invalid @enderror"
-                            placeholder="Address email"
+                            placeholder="Ingrese su correo electrónico"
                             required
                             autocomplete="username"
                             autofocus
@@ -63,19 +63,34 @@
                     {{-- Contraseña --}}
                     <div class="mb-4">
                         <label for="contrasena" class="form-label fw-semibold">*Contraseña</label>
-                        <input
-                            id="contrasena"
-                            type="password"
-                            name="contrasena"
-                            class="form-control @error('contrasena') is-invalid @enderror"
-                            placeholder="Contraseña"
-                            required
-                            autocomplete="current-password"
-                        >
+
+                        <div class="position-relative">
+                            <input
+                                id="contrasena"
+                                type="password"
+                                name="contrasena"
+                                class="form-control @error('contrasena') is-invalid @enderror"
+                                placeholder="Contraseña"
+                                required
+                                autocomplete="current-password"
+                            >
+
+                            <!-- Botón mostrar/ocultar contraseña -->
+                            <span
+                                class="position-absolute top-50 end-0 translate-middle-y me-3"
+                                style="cursor: pointer;"
+                                onclick="togglePassword()"
+                                                        >
+                                        <i id="iconoPassword" class="fa-solid fa-eye"></i>
+                                    </span>
+                        </div>
+
                         @error('contrasena')
                         <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
+
+
 
                     {{-- Botón iniciar sesión --}}
                     <div class="text-center mt-4">
@@ -215,5 +230,23 @@
 
 {{-- Bootstrap JS --}}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
+
+<script>
+    function togglePassword() {
+        const input = document.getElementById('contrasena');
+        const icono = document.getElementById('iconoPassword');
+
+        if (input.type === "password") {
+            input.type = "text";
+            icono.classList.remove('fa-eye');
+            icono.classList.add('fa-eye-slash');
+        } else {
+            input.type = "password";
+            icono.classList.remove('fa-eye-slash');
+            icono.classList.add('fa-eye');
+        }
+    }
+</script>
+
 </body>
 </html>

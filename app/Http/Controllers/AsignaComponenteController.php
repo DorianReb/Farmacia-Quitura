@@ -80,7 +80,7 @@ class AsignaComponenteController extends Controller
         $componentes = NombreCientifico::orderBy('nombre')->get(['id','nombre']);
         $unidades    = UnidadMedida::orderBy('nombre')->get(['id','nombre']);
 
-        return view('asigna_componentes.index', [
+        return view('producto.index', [
             'q'                     => $q,
             'productosPaginator'    => $productosPaginator,   // ← paginador de productos
             'asignacionesPorProducto' => $asignacionesPorProducto, // ← grupos por producto_id
@@ -130,7 +130,7 @@ class AsignaComponenteController extends Controller
 
         AsignaComponente::create($data);
 
-        return redirect()->route('asigna_componentes.index')
+        return redirect()->route('producto.index')
             ->with('success', 'Componente asignado correctamente.');
     }
 
@@ -193,7 +193,7 @@ class AsignaComponenteController extends Controller
 
         $asignacion->update($data);
 
-        return redirect()->route('asigna_componentes.index')
+        return redirect()->route('producto.index')
             ->with('success', 'Asignación actualizada correctamente.');
     }
 
@@ -206,7 +206,7 @@ class AsignaComponenteController extends Controller
         $asignacion = AsignaComponente::findOrFail($id);
         $asignacion->delete();
 
-        return redirect()->route('asigna_componentes.index')
+        return redirect()->route('producto.index')
             ->with('success', 'Asignación eliminada.');
     }
 }

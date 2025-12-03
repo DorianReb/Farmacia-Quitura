@@ -5,10 +5,25 @@
         .card-soft{border:0;border-radius:14px;box-shadow:0 8px 20px rgba(16,24,40,.06);}
         .table-hover tbody tr:hover{background:#f7f9ff;}
         .btn-icon{padding:.45rem .6rem;border-radius:999px;display:inline-flex;align-items:center;justify-content:center}
+
+        /* Encabezado igual al Ranking */
+        .table thead th{
+            background:#0a2e63 !important;
+            color:#fff !important;
+            border:0 !important;
+        }
+
         /* Paginación compacta como Marcas */
         .pagination { gap:.25rem; }
-        .pagination .page-link{ padding:.25rem .55rem; font-size:.85rem; border:0; }
-        .pagination .page-item.active .page-link{ background:var(--bs-success); border-color:var(--bs-success); }
+        .pagination .page-link{
+            padding:.25rem .55rem;
+            font-size:.85rem;
+            border:0;
+        }
+        .pagination .page-item.active .page-link{
+            background:var(--bs-primary);
+            border-color:var(--bs-primary);
+        }
     </style>
 
     <div class="container-xxl">

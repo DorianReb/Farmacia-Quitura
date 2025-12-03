@@ -10,6 +10,9 @@
         .pagination .page-item.active .page-link{ background:var(--bs-success); border-color:var(--bs-success); }
         .col-resumen{ max-width:520px; white-space:normal; word-break:break-word; }
         @media (max-width: 1400px){ .col-resumen{ max-width:420px; } }
+        .chip-comp{ background:#eef2ff; border:1px solid #e0e7ff; border-radius:999px; padding:.15rem .5rem; display:inline-flex; align-items:center; gap:.35rem; }
+        .chip-actions .btn{ padding:.1rem .35rem; border-radius:999px; }
+        .comp-list{ max-height: 180px; overflow:auto; }
     </style>
 
     @php
@@ -80,7 +83,7 @@
                             <th class="text-end">Exist.</th>
                             <th class="text-end">Stock mín.</th>
                             <th>Receta</th>
-                            <th class="text-center">Comp.</th>
+                            <th class="text-center">Componentes</th> {{-- ahora con Edit/Delete para Admin --}}
                             @if($isAdmin)
                                 <th class="text-end" style="width:220px">Acciones</th>
                             @endif
@@ -93,8 +96,6 @@
                                 $meta  = $metaPorProducto[$producto->id] ?? null;
                                 $total = $meta['total'] ?? 0;
                                 $nombres = $meta['nombres'] ?? [];
-                                $preview = array_slice($nombres, 0, 3);
-                                $restantes = max(0, $total - count($preview));
                                 $listaCompleta = collect($nombres)->map(fn($x) => e($x))->implode('<br>');
                             @endphp
                             <tr>
@@ -125,25 +126,73 @@
                                     @endif
                                 </td>
 
-                                {{-- COMPONENTES: badge y popover (sin columna de "Detalle" para ahorrar ancho) --}}
-                                <td class="text-center">
-                                    @if($total > 0)
-                                        <a href="#"
-                                           class="badge bg-primary text-decoration-none"
-                                           data-bs-toggle="popover"
-                                           data-bs-html="true"
-                                           data-bs-trigger="focus hover"
-                                           data-bs-placement="top"
-                                           title="Componentes"
-                                           data-bs-content="{!! $listaCompleta !!}">
-                                            {{ $total }}
-                                        </a>
-                                    @else
+                                {{-- COMPONENTES: para Admin muestra lista con Edit/Delete; para otros, badge con popover --}}
+                                <td>
+                                    @if($total === 0)
                                         <span class="text-muted">—</span>
+                                    @else
+                                        @if($isAdmin)
+                                            <div class="comp-list">
+                                                @foreach($grupo as $row)
+                                                    @php
+                                                        $f = rtrim(rtrim(number_format($row->fuerza_cantidad, 2, '.', ''), '0'), '.');
+                                                        $b = rtrim(rtrim(number_format($row->base_cantidad, 2, '.', ''), '0'), '.');
+                                                        $fu = $row->fuerzaUnidad->nombre ?? '';
+                                                        $bu = $row->baseUnidad->nombre ?? '';
+                                                        $cn = $row->componente->nombre ?? '—';
+                                                    @endphp
+                                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                                        <span class="chip-comp">
+                                                            <i class="fa-solid fa-dna"></i>
+                                                            <span class="small">
+                                                                {{ $cn }} {{ $f }} {{ $fu }} / {{ $b }} {{ $bu }}
+                                                            </span>
+                                                        </span>
+                                                        <span class="chip-actions">
+                                                            {{-- Editar asignación --}}
+                                                            <button class="btn btn-warning btn-sm"
+                                                                    data-bs-toggle="modal"
+                                                                    data-bs-target="#editAsignaComponenteModal{{ $row->id }}"
+                                                                    title="Editar">
+                                                                <i class="fa-regular fa-pen-to-square"></i>
+                                                            </button>
+                                                            {{-- Eliminar asignación --}}
+                                                            <form action="{{ route('asigna_componentes.destroy', $row->id) }}"
+                                                                  method="POST" class="d-inline"
+                                                                  onsubmit="return confirm('¿Eliminar el componente "{{ $cn }}" de este producto?')">
+                                                                @csrf @method('DELETE')
+                                                                <button type="submit" class="btn btn-danger btn-sm" title="Eliminar">
+                                                                    <i class="fa-regular fa-trash-can"></i>
+                                                                </button>
+                                                            </form>
+                                                        </span>
+                                                    </div>
+
+                                                    {{-- Modal editar (inline por fila) --}}
+                                                    @include('asigna_componentes.edit', [
+                                                        'row' => $row,
+                                                        'productos' => collect([$producto]),
+                                                        'componentes' => $componentes,
+                                                        'unidades' => $unidades
+                                                    ])
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <a href="#"
+                                               class="badge bg-primary text-decoration-none"
+                                               data-bs-toggle="popover"
+                                               data-bs-html="true"
+                                               data-bs-trigger="focus hover"
+                                               data-bs-placement="top"
+                                               title="Componentes"
+                                               data-bs-content="{!! $listaCompleta !!}">
+                                                {{ $total }}
+                                            </a>
+                                        @endif
                                     @endif
                                 </td>
 
-                                {{-- ACCIONES --}}
+                                {{-- ACCIONES PRODUCTO --}}
                                 @if($isAdmin)
                                     <td class="text-end">
                                         <div class="btn-group btn-group-sm" role="group">
@@ -177,7 +226,7 @@
                                 @endif
                             </tr>
 
-                            {{-- Modal de edición (inline) --}}
+                            {{-- Modal de edición de producto --}}
                             @if($isAdmin)
                                 @include('producto.edit', ['producto' => $producto])
                             @endif
@@ -241,7 +290,7 @@
     @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', () => {
-                // Popovers (componentes)
+                // Popovers (para roles no admin)
                 document.querySelectorAll('[data-bs-toggle="popover"]').forEach(el => {
                     new bootstrap.Popover(el, { container: 'body' });
                 });

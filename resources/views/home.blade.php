@@ -75,7 +75,7 @@
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="section-title m-0">PRÓXIMOS 5 PRODUCTOS A CADUCAR</h6>
-                <a href="{{route('producto.index')}}" class="btn btn-primary btn-sm">
+                <a href="{{route('reportes.caducidad')}}" class="btn btn-primary btn-sm">
                     Ver todos los productos
                 </a>
             </div>
@@ -95,18 +95,28 @@
                     <tbody>
                     @forelse($proximosACaducar ?? [] as $item)
                         <tr>
-                            <td class="fw-semibold">{{ $item->producto }}</td>
+                            <td class="fw-semibold">{{ $item->producto_resumen ?? $item->producto }}</td>
                             <td>{{ $item->lote }}</td>
                             <td>{{ number_format($item->unidades_restantes) }}</td>
                             <td>{{ \Carbon\Carbon::parse($item->fecha_caducidad)->format('d/m/Y') }}</td>
                             <td>{{ $item->dias_restantes }} días</td>
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm" role="group">
-                                    <a href="{{ route('lote.index', $item->id) }}" class="btn btn-outline-secondary" title="Ver">
+                                    {{-- Ver lote (OJO: tu route lote.index no recibe ID; si luego quieres podemos cambiarlo a show) --}}
+                                    <a href="{{ route('lote.index') }}" class="btn btn-outline-secondary" title="Ver lotes">
                                         <i class="fa-regular fa-eye"></i>
                                     </a>
-                                    <a href="{{ route('venta.index', ['producto' => $item->producto_id ?? null]) }}" class="btn btn-outline-secondary" title="Venta rápida">
+
+                                    {{-- Venta rápida (si luego filtras por producto en la vista de venta, puedes usar este parámetro) --}}
+                                    <a href="{{ route('venta.index', ['producto' => $item->producto_id ?? null]) }}"
+                                       class="btn btn-outline-secondary" title="Venta rápida">
                                         <i class="fa-solid fa-bolt"></i>
+                                    </a>
+
+                                    {{--ir a promociones --}}
+                                    <a href="{{ route('promocion.index') }}"
+                                       class="btn btn-outline-secondary" title="Ver promociones">
+                                        <i class="fa-solid fa-tags"></i>
                                     </a>
                                 </div>
                             </td>
@@ -140,7 +150,7 @@
                             @forelse(($topVendidos ?? []) as $i => $row)
                                 <tr>
                                     <td>{{ $loop->iteration }}</td>
-                                    <td class="fw-semibold">{{ $row->producto }}</td>
+                                    <td class="fw-semibold">{{ $row->producto_resumen ?? $row->producto }}</td>
                                     <td class="text-end">{{ number_format($row->unidades) }}</td>
                                 </tr>
                             @empty
@@ -174,7 +184,8 @@
                             @forelse(($menosVendidos ?? []) as $i => $row)
                                 <tr>
                                     <td>{{ $loop->iteration }}</td>
-                                    <td class="fw-semibold">{{ $row->producto }}</td>
+                                    <td class="fw-semibold">{{ $row->producto_resumen ?? $row->producto }}</td>
+
                                     <td class="text-end">{{ number_format($row->unidades) }}</td>
                                 </tr>
                             @empty
@@ -209,7 +220,8 @@
                     @forelse(($stockBajo ?? []) as $row)
                         <tr @class(['table-warning'=> ($row->existencias ?? 0) <= ($row->stock_minimo ?? 0)])>
                             <td>{{ $loop->iteration }}</td>
-                            <td class="fw-semibold">{{ $row->producto }}</td>
+                            <td class="fw-semibold">{{ $row->producto_resumen ?? $row->producto }}</td>
+
                             <td class="text-end">{{ number_format($row->existencias) }}</td>
                             <td class="text-end">{{ number_format($row->stock_minimo) }}</td>
                         </tr>

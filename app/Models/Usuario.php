@@ -15,7 +15,7 @@ class User extends Authenticatable
     protected $table = 'usuarios';
 
     // Si NO tienes created_at / updated_at en la tabla:
-    public $timestamps = false;
+    public $timestamps = true;
 
     // Clave primaria
     protected $primaryKey = 'id';

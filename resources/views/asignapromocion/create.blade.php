@@ -13,9 +13,17 @@
                         <select name="promocion_id" id="promocion_id" class="form-select" required>
                             <option value="">Seleccione promoción</option>
                             @foreach($promociones as $promo)
-                                <option value="{{ $promo->id }}">{{ $promo->porcentaje }}% - {{ $promo->autorizada_por }}</option>
+                                @php
+                                    $inicio = \Carbon\Carbon::parse($promo->fecha_inicio)->format('d/m/Y');
+                                    $fin    = \Carbon\Carbon::parse($promo->fecha_fin)->format('d/m/Y');
+                                @endphp
+
+                                <option value="{{ $promo->id }}">
+                                    {{ number_format($promo->porcentaje, 2) }}%  —  {{ $inicio }} a {{ $fin }}
+                                </option>
                             @endforeach
                         </select>
+
                     </div>
                     <div class="mb-3">
                         <label for="lote_id" class="form-label">Lote</label>
@@ -23,9 +31,12 @@
                             <option value="">Seleccione lote</option>
                             @foreach($lotes as $lote)
                                 <option value="{{ $lote->id }}">
-                                    {{ $lote->codigo }} - {{ $lote->producto->nombre_comercial ?? '—' }}
+                                    {{ $lote->codigo }} - {{ $lote->producto->resumen ?? $lote->producto->nombre_comercial ?? '—' }}
+                                    (vence: {{ \Carbon\Carbon::parse($lote->fecha_caducidad)->format('d/m/Y') }})
                                 </option>
                             @endforeach
+
+
                         </select>
                     </div>
                 </div>

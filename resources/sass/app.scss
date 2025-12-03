@@ -8,6 +8,10 @@
 // Variables
 @import 'bootstrap/scss/variables';
 
+//Styles
+@import '../css/admin-tables.css';
+
+
 $theme-colors: (
     "primary":    $primary,
     "secondary":  $secondary,

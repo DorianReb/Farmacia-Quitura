@@ -87,9 +87,10 @@
 
                                         {{-- Eliminar --}}
                                         <form action="{{ route('unidad_medida.destroy', $u->id) }}"
-                                              method="POST" class="d-inline"
-                                              onsubmit="return confirm('¿Eliminar esta unidad de medida?')">
-                                            @csrf @method('DELETE')
+                                              method="POST"
+                                              class="d-inline form-delete">
+                                            @csrf
+                                            @method('DELETE')
                                             <button class="btn btn-danger shadow-sm rounded-pill btn-icon"
                                                     type="submit" title="Eliminar" data-bs-placement="top">
                                                 <i class="fa-regular fa-trash-can"></i>

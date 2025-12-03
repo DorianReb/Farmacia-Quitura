@@ -52,12 +52,14 @@
                     {{-- Fecha inicio --}}
                     <div class="mb-3">
                         <label for="fecha_inicio{{ $promocion->id }}" class="form-label">Fecha de inicio <span class="text-danger">*</span></label>
-                        <input type="date"
-                               class="form-control @error('fecha_inicio') is-invalid @enderror"
-                               id="fecha_inicio{{ $promocion->id }}"
-                               name="fecha_inicio"
-                               value="{{ old('fecha_inicio', $promocion->fecha_inicio) }}"
-                               required>
+                        <input
+                            type="text"
+                            id="fecha_inicio{{ $promocion->id }}"
+                            name="fecha_inicio"
+                            class="form-control js-date-promo-inicio @error('fecha_inicio') is-invalid @enderror"
+                            value="{{ old('fecha_inicio', \Carbon\Carbon::parse($promocion->fecha_inicio)->format('d-m-Y')) }}"
+                            readonly
+                            required>
                         @error('fecha_inicio')
                         <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -66,32 +68,32 @@
                     {{-- Fecha fin --}}
                     <div class="mb-3">
                         <label for="fecha_fin{{ $promocion->id }}" class="form-label">Fecha de fin <span class="text-danger">*</span></label>
-                        <input type="date"
-                               class="form-control @error('fecha_fin') is-invalid @enderror"
-                               id="fecha_fin{{ $promocion->id }}"
-                               name="fecha_fin"
-                               value="{{ old('fecha_fin', $promocion->fecha_fin) }}"
-                               required>
+                        <input
+                            type="text"
+                            id="fecha_fin{{ $promocion->id }}"
+                            name="fecha_fin"
+                            class="form-control js-date-promo-fin @error('fecha_fin') is-invalid @enderror"
+                            value="{{ old('fecha_fin', \Carbon\Carbon::parse($promocion->fecha_fin)->format('d-m-Y')) }}"
+                            readonly
+                            required>
                         @error('fecha_fin')
                         <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
 
-                    {{-- Autorizada por --}}
+                    {{-- Autorizada por (solo lectura) --}}
                     <div class="mb-3">
-                        <label for="autorizada_por" class="form-label">Autorizada por <span class="text-danger">*</span></label>
-                        <select name="autorizada_por" id="autorizada_por" class="form-select @error('autorizada_por') is-invalid @enderror" required>
-                            <option value="">Selecciona un usuario</option>
-                            @foreach($usuarios as $usuario)
-                                <option value="{{ $usuario->id }}" {{ old('autorizada_por', $promocion->autorizada_por ?? '') == $usuario->id ? 'selected' : '' }}>
-                                    {{ $usuario->nombre_completo }}
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('autorizada_por')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                        <label class="form-label">Autorizada por</label>
+                        <input type="text" class="form-control"
+                               value="{{ $promocion->usuario?->nombre_completo ?? '—' }}" readonly>
+                        <small class="text-muted">
+                            Al guardar, se actualizará automáticamente con tu usuario actual.
+                        </small>
                     </div>
+
+                    {{-- (Opcional) Mantener el id actual como hidden, aunque update() lo reescribe con Auth::id() --}}
+                    <input type="hidden" name="autorizada_por" value="{{ $promocion->autorizada_por }}">
+
 
 
                     {{-- Footer --}}

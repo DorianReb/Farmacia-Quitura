@@ -13,6 +13,8 @@ use App\Http\Controllers\SolicitudController;
 use App\Http\Controllers\AsignaPromocionController;
 use App\Http\Controllers\AsignaComponenteController;
 use App\Http\Controllers\DetalleVentaController;
+use App\Http\Controllers\ReporteController;
+
 
 Route::get('/', function () {
     return view('auth.login');
@@ -111,6 +113,15 @@ Route::middleware(['auth', 'estado', 'role:Administrador,Superadmin'])->group(fu
     // Promociones y asignación de promociones (solo Gerente/Superadmin)
     Route::resource('promocion', PromocionController::class);
     Route::resource('asignapromocion', AsignaPromocionController::class);
+
+    // ===================== REPORTES (solo Admin y Superadmin) =====================
+    Route::prefix('reportes')->name('reportes.')->group(function () {
+        Route::get('/rentabilidad', [ReporteController::class, 'rentabilidad'])->name('rentabilidad');
+        Route::get('/ranking',      [ReporteController::class, 'ranking'])->name('ranking');
+        Route::get('/caducidad',    [ReporteController::class, 'caducidad'])->name('caducidad');
+        Route::get('/stock_bajo',   [ReporteController::class, 'stockBajo'])->name('stock_bajo');
+        Route::get('/sin_ventas',   [ReporteController::class, 'sinVentas'])->name('sin_ventas');
+    });
 });
 
 /*

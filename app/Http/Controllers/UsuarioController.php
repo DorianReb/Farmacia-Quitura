@@ -95,9 +95,29 @@ class UsuarioController extends Controller
     public function destroy($id_usuario)
     {
         //
-        $usuario = User::find($id_usuario);
-        $usuario->delete();
-        return redirect()->route('superadmin.usuarios.index')->with('success', 'Usuario eliminado');
+        $usuario = User::findOrFail($id_usuario);
 
+        \DB::transaction(function () use ($usuario) {
+            // 1) Cambiar estado a Rechazado
+            $usuario->estado = 'Rechazado';
+
+            // (Opcional) liberar unicidad del correo si usas unique(correo) y quieres
+            // permitir reutilizarlo más adelante:
+            // if (!empty($usuario->correo)) {
+            //     $usuario->correo = $usuario->correo.'.deleted.'.$usuario->id;
+            // }
+
+            $usuario->save();
+
+            // (Opcional) invalidar tokens/sesiones si usas Sanctum/Passport
+            // if (method_exists($usuario, 'tokens')) $usuario->tokens()->delete();
+
+            // 2) "Eliminar" (soft delete)
+            $usuario->delete();
+        });
+
+        return redirect()
+            ->route('superadmin.usuarios.index')
+            ->with('success', 'Usuario marcado como Rechazado y eliminado.');
     }
 }

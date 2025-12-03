@@ -24,6 +24,15 @@
                     </div>
                 @endif
 
+                {{-- ERROR DEL PROCEDURE --}}
+                @if ($errors->has('procedimiento') && session('from_modal') === 'create_lote')
+                    <div class="alert alert-danger">
+                        <strong>Error del sistema:</strong>
+                        {{ $errors->first('procedimiento') }}
+                    </div>
+                @endif
+
+
                 {{-- FORMULARIO --}}
                 <form action="{{ route('lote.store') }}" method="POST" autocomplete="off">
                     @csrf
@@ -64,17 +73,26 @@
 
                     {{-- FECHA DE CADUCIDAD --}}
                     <div class="mb-3">
-                        <label for="fecha_caducidad" class="form-label">Fecha de caducidad <span class="text-danger">*</span></label>
-                        <input type="date"
-                               class="form-control @error('fecha_caducidad') is-invalid @enderror"
-                               id="fecha_caducidad"
-                               name="fecha_caducidad"
-                               value="{{ old('fecha_caducidad') }}"
-                               required>
+                        <label for="fecha_caducidad" class="form-label">
+                            Fecha de caducidad <span class="text-danger">*</span>
+                        </label>
+
+                        <input
+                            type="text"
+                            id="fecha_caducidad"
+                            name="fecha_caducidad"
+                            class="form-control js-date-caducidad @error('fecha_caducidad') is-invalid @enderror"
+                            value="{{ old('fecha_caducidad') }}"
+                            readonly
+                            required
+                        >
+
                         @error('fecha_caducidad')
                         <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
+
+
 
                     {{-- PRECIO DE COMPRA --}}
                     <div class="mb-3">
@@ -98,25 +116,23 @@
                                id="cantidad"
                                name="cantidad"
                                value="{{ old('cantidad') }}"
-                               min="1"
+                               min="0"
                                required>
                         @error('cantidad')
                         <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
 
-                    {{-- FECHA DE ENTRADA --}}
+                    {{-- FECHA DE ENTRADA (solo informativa) --}}
                     <div class="mb-3">
-                        <label for="fecha_entrada" class="form-label">Fecha de entrada <span class="text-danger">*</span></label>
-                        <input type="date"
-                               class="form-control @error('fecha_entrada') is-invalid @enderror"
-                               id="fecha_entrada"
-                               name="fecha_entrada"
-                               value="{{ old('fecha_entrada') ?? now()->format('Y-m-d') }}"
-                               required>
-                        @error('fecha_entrada')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                        <label class="form-label">Fecha de entrada</label>
+                        <input type="text"
+                               class="form-control"
+                               value="{{ now()->format('Y-m-d H:i') }}"
+                               disabled>
+                        <div class="form-text">
+                            Esta fecha se registra automáticamente al guardar el lote.
+                        </div>
                     </div>
 
                     {{-- FOOTER --}}
@@ -134,3 +150,25 @@
         </div>
     </div>
 </div>
+@php
+    $fromModal = old('from_modal') ?? session('from_modal');
+@endphp
+{{-- ERRORES GENERALES DE VALIDACIÓN --}}
+@if ($errors->any() && $fromModal === 'create_lote')
+    <div class="alert alert-danger">
+        <strong>Revisa los campos:</strong>
+        <ul class="mb-0">
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
+{{-- ERROR DEL PROCEDURE --}}
+@if ($errors->has('procedimiento') && $fromModal === 'create_lote')
+    <div class="alert alert-danger mt-2">
+        <strong>Error del sistema:</strong>
+        {{ $errors->first('procedimiento') }}
+    </div>
+@endif
