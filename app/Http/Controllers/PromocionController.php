@@ -21,22 +21,62 @@ class PromocionController extends Controller
 
     public function index(Request $request)
     {
+        // Búsquedas independientes
+        $promoQ  = trim($request->input('promo_q'));
+        $asignaQ = trim($request->input('asigna_q'));
+
+        // ===== PROMOCIONES =====
         $query = Promocion::query()->with('usuario');
 
-        if ($request->q) {
-            $q = $request->q;
-            $query->where('porcentaje', 'like', "%{$q}%")
-                ->orWhereHas('usuario', fn($qq) =>
-                $qq->whereRaw("CONCAT_WS(' ', nombre, apellido_paterno, apellido_materno) LIKE ?", ["%{$q}%"])
-                );
+        if ($promoQ !== '') {
+            $query->where(function ($q) use ($promoQ) {
+                $q->where('porcentaje', 'like', "%{$promoQ}%")
+                    ->orWhereHas('usuario', function ($qq) use ($promoQ) {
+                        $qq->whereRaw(
+                            "CONCAT_WS(' ', nombre, apellido_paterno, apellido_materno) LIKE ?",
+                            ["%{$promoQ}%"]
+                        );
+                    });
+            });
         }
 
-        $promociones  = $query->orderBy('fecha_inicio', 'desc')->paginate(10);
+        $promociones  = $query
+            ->orderBy('fecha_inicio', 'desc')
+            ->paginate(10)
+            ->appends([
+                'promo_q'  => $promoQ,
+                'asigna_q' => $asignaQ,
+            ]);
 
-        $asignaciones = AsignaPromocion::with(['promocion', 'lote.producto.formaFarmaceutica'])
+        // ===== ASIGNACIONES =====
+        $asigQuery = AsignaPromocion::with(['promocion', 'lote.producto.formaFarmaceutica']);
+
+        if ($asignaQ !== '') {
+            $asigQuery->where(function ($q) use ($asignaQ) {
+                // Filtrar por porcentaje de la promoción
+                $q->whereHas('promocion', function ($qq) use ($asignaQ) {
+                    $qq->where('porcentaje', 'like', "%{$asignaQ}%");
+                })
+                    // O por código de lote / nombre de producto
+                    ->orWhereHas('lote', function ($qq) use ($asignaQ) {
+                        $qq->where('codigo', 'like', "%{$asignaQ}%")
+                            ->orWhereHas('producto', function ($pp) use ($asignaQ) {
+                                $pp->where('nombre_comercial', 'like', "%{$asignaQ}%")
+                                    ->orWhere('descripcion', 'like', "%{$asignaQ}%");
+                            });
+                    });
+            });
+        }
+
+        $asignaciones = $asigQuery
             ->orderBy('created_at', 'desc')
-            ->paginate(10);
+            ->paginate(10)
+            ->appends([
+                'promo_q'  => $promoQ,
+                'asigna_q' => $asignaQ,
+            ]);
 
+        // ===== LOTES PARA MODALES =====
         $hoy    = Carbon::today();
         $limite = $hoy->copy()->addDays(90);
 
@@ -46,8 +86,16 @@ class PromocionController extends Controller
             ->orderBy('fecha_caducidad', 'asc')
             ->get();
 
-        // ================== RESUMEN DE PRODUCTO PARA LOS LOTES (MISMA LÓGICA) ==================
-        $productoIds = $lotes->pluck('producto_id')->filter()->unique();
+        // ================== RESUMEN DE PRODUCTO PARA LOTES Y ASIGNACIONES ==================
+        $productoIds = collect()
+            ->merge($lotes->pluck('producto_id'))
+            ->merge(
+                $asignaciones->pluck('lote')
+                    ->filter()
+                    ->pluck('producto_id')
+            )
+            ->filter()
+            ->unique();
 
         $asignacionesComponentes = $productoIds->isEmpty()
             ? collect()
@@ -60,16 +108,12 @@ class PromocionController extends Controller
                 ->get()
                 ->groupBy('producto_id');
 
-        foreach ($lotes as $lote) {
-            if (!$lote->producto) {
-                continue;
-            }
-
-            $p = $lote->producto;
+        $buildResumen = function($producto) use ($asignacionesComponentes) {
+            if (!$producto) return;
 
             $componentesTxt = '';
-            if (isset($asignacionesComponentes[$p->id])) {
-                $componentesTxt = $asignacionesComponentes[$p->id]
+            if (isset($asignacionesComponentes[$producto->id])) {
+                $componentesTxt = $asignacionesComponentes[$producto->id]
                     ->map(function ($a) {
                         $fuerza = rtrim(rtrim(number_format($a->fuerza_cantidad, 2, '.', ''), '0'), '.');
                         $base   = rtrim(rtrim(number_format($a->base_cantidad, 2, '.', ''), '0'), '.');
@@ -83,10 +127,10 @@ class PromocionController extends Controller
                 $componentesTxt = $componentesTxt ? " {$componentesTxt}" : '';
             }
 
-            $nombre      = trim($p->nombre_comercial ?? '');
-            $descripcion = trim($p->descripcion ?? '');
-            $contenido   = trim($p->contenido ?? '');
-            $forma       = trim($p->formaFarmaceutica->nombre ?? '');
+            $nombre      = trim($producto->nombre_comercial ?? '');
+            $descripcion = trim($producto->descripcion ?? '');
+            $contenido   = trim($producto->contenido ?? '');
+            $forma       = trim($producto->formaFarmaceutica->nombre ?? '');
 
             $partes = array_filter([
                 $nombre,
@@ -95,11 +139,22 @@ class PromocionController extends Controller
                 $forma       ?: null,
             ]);
 
-            $p->resumen = trim(implode(' ', $partes).$componentesTxt);
+            $producto->resumen = trim(implode(' ', $partes).$componentesTxt);
+        };
+
+        foreach ($lotes as $lote) {
+            if ($lote->producto) {
+                $buildResumen($lote->producto);
+            }
+        }
+
+        foreach ($asignaciones as $asigna) {
+            if ($asigna->lote && $asigna->lote->producto) {
+                $buildResumen($asigna->lote->producto);
+            }
         }
         // =======================================================================
 
-        // Promociones vigentes para combos, etc.
         $promociones_all = Promocion::whereDate('fecha_inicio', '<=', $hoy)
             ->whereDate('fecha_fin', '>=', $hoy)
             ->orderBy('fecha_fin', 'asc')
@@ -113,10 +168,6 @@ class PromocionController extends Controller
             'promociones_all'
         ));
     }
-
-
-
-
 
     public function store(Request $request)
     {

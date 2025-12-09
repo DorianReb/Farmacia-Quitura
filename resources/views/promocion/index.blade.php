@@ -36,6 +36,26 @@
             $hoy = Carbon::today();
         @endphp
 
+        {{-- ALERTAS GLOBALES (ÉXITO / ERROR) --}}
+        <div class="row mb-3">
+            <div class="col-12 col-lg-6">
+                @if (session('success'))
+                    <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+                        <i class="fa-solid fa-circle-check me-2"></i>
+                        {{ session('success') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                    </div>
+                @endif
+
+                @if (session('error'))
+                    <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+                        <i class="fa-solid fa-circle-exclamation me-2"></i>
+                        {{ session('error') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                    </div>
+                @endif
+            </div>
+        </div>
 
         {{-- ENCABEZADO --}}
         <div class="row mb-3">
@@ -47,18 +67,30 @@
             </div>
         </div>
 
-        {{-- BUSCADOR --}}
-        <div class="d-flex justify-content-end align-items-center mb-4">
+        {{-- ================== BUSCADOR SOLO PARA PROMOCIONES ================== --}}
+        <div class="d-flex justify-content-end align-items-center mb-3">
             <form method="GET" action="{{ route('promocion.index') }}" class="d-flex" style="min-width:300px; max-width:480px; width:100%;">
                 <div class="input-group">
-                    <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
-                    <input type="search" name="q" value="{{ request('q') }}" class="form-control" placeholder="Buscar…">
-                    @if(request('q'))
-                        <a href="{{ route('promocion.index') }}" class="btn btn-outline-secondary" title="Limpiar búsqueda">
+                    <span class="input-group-text">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </span>
+                    <input
+                        type="search"
+                        name="promo_q"
+                        value="{{ request('promo_q') }}"
+                        class="form-control"
+                        placeholder="Buscar promociones…">
+                    @if(request('promo_q'))
+                        {{-- Limpiar solo búsqueda de promociones, conservando la de asignaciones --}}
+                        <a href="{{ route('promocion.index', ['asigna_q' => request('asigna_q')]) }}"
+                           class="btn btn-outline-secondary"
+                           title="Limpiar búsqueda de promociones">
                             <i class="fa-regular fa-circle-xmark"></i>
                         </a>
                     @endif
-                    <button class="btn btn-success" title="Buscar"><i class="fa-solid fa-search"></i></button>
+                    <button class="btn btn-success" title="Buscar promociones">
+                        <i class="fa-solid fa-search"></i>
+                    </button>
                 </div>
             </form>
         </div>
@@ -123,7 +155,11 @@
                             </tr>
 
                         @empty
-                            <tr><td colspan="6" class="text-center py-4 text-muted">No hay promociones registradas.</td></tr>
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    No hay promociones registradas.
+                                </td>
+                            </tr>
                         @endforelse
                         </tbody>
                     </table>
@@ -140,6 +176,34 @@
                 {{ $errors->first('asigna_promocion') }}
             </div>
         @endif
+
+        {{-- ================== BUSCADOR SOLO PARA ASIGNACIONES ================== --}}
+        <div class="d-flex justify-content-end align-items-center mb-3">
+            <form method="GET" action="{{ route('promocion.index') }}" class="d-flex" style="min-width:300px; max-width:480px; width:100%;">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </span>
+                    <input
+                        type="search"
+                        name="asigna_q"
+                        value="{{ request('asigna_q') }}"
+                        class="form-control"
+                        placeholder="Buscar asignaciones…">
+                    @if(request('asigna_q'))
+                        {{-- Limpiar solo búsqueda de asignaciones, conservando la de promociones --}}
+                        <a href="{{ route('promocion.index', ['promo_q' => request('promo_q')]) }}"
+                           class="btn btn-outline-secondary"
+                           title="Limpiar búsqueda de asignaciones">
+                            <i class="fa-regular fa-circle-xmark"></i>
+                        </a>
+                    @endif
+                    <button class="btn btn-success" title="Buscar asignaciones">
+                        <i class="fa-solid fa-search"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
 
         {{-- TABLA DE ASIGNACIONES --}}
         <div class="card card-soft mb-4">
@@ -170,7 +234,11 @@
                             @endphp
                             <tr>
                                 <td>{{ $asigna->lote->codigo ?? '—' }}</td>
-                                <td>{{ $asigna->lote->producto->nombre_comercial ?? '—' }}</td>
+                                <td>
+                                    {{ $asigna->lote->producto->resumen
+                                        ?? $asigna->lote->producto->nombre_comercial
+                                        ?? '—' }}
+                                </td>
                                 <td>{{ $asigna->promocion->porcentaje ?? '—' }}%</td>
                                 <td>
                                     @if($vigenteAsig)
@@ -199,7 +267,11 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" class="text-center py-4 text-muted">No hay asignaciones registradas.</td></tr>
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">
+                                    No hay asignaciones registradas.
+                                </td>
+                            </tr>
                         @endforelse
                         </tbody>
                     </table>

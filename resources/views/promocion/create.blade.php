@@ -115,16 +115,3 @@
     </div>
 </div>
 
-@push('scripts')
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const inicio = document.getElementById('fecha_inicio');
-            const fin = document.getElementById('fecha_fin');
-
-            inicio.addEventListener('change', () => {
-                fin.min = inicio.value;  // 👈 fecha mínima igual a inicio
-            });
-        });
-    </script>
-@endpush
-

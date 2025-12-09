@@ -42,7 +42,7 @@ class HomeController extends Controller
         $porCaducar30d = DB::table('lotes')
             ->where('cantidad', '>', 0)
             ->whereBetween('fecha_caducidad', [$hoy, $hoy->copy()->addDays(30)])
-            ->sum('cantidad');
+            ->count(); // CUENTA lotes
 
         $caducadas = DB::table('lotes')
             ->where('cantidad', '>', 0)
@@ -67,6 +67,7 @@ class HomeController extends Controller
                 'l.id',
                 'p.id as producto_id',
                 'p.nombre_comercial as producto',
+                'p.codigo_barras as codigo_barras',   // 👈 AÑADIDO
                 'l.codigo as lote',
                 'l.cantidad as unidades_restantes',
                 'l.fecha_caducidad',

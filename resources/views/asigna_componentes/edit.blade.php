@@ -41,6 +41,7 @@
                     @method('PUT')
                     <input type="hidden" name="from_modal" value="edit_asigna_componente">
                     <input type="hidden" name="edit_id" value="{{ $row->id }}">
+                    <input type="hidden" name="page" value="{{ request('page', 1) }}">
 
                     {{-- Producto (nombre comercial) --}}
                     <div class="col-12 col-md-6">
@@ -75,7 +76,7 @@
                     {{-- Fuerza --}}
                     <div class="col-6 col-md-3">
                         <label for="fuerza_cantidad_edit_{{ $row->id }}" class="form-label">Fuerza (cantidad) <span class="text-danger">*</span></label>
-                        <input type="number" step="0.01" min="0"
+                        <input type="number" step="0.001" min="0"
                                class="form-control @if($isThisModal) @error('fuerza_cantidad') is-invalid @enderror @endif"
                                id="fuerza_cantidad_edit_{{ $row->id }}" name="fuerza_cantidad"
                                value="{{ $valFuerzaCant }}" required>
@@ -98,7 +99,7 @@
                     {{-- Base --}}
                     <div class="col-6 col-md-3">
                         <label for="base_cantidad_edit_{{ $row->id }}" class="form-label">Base (cantidad) <span class="text-danger">*</span></label>
-                        <input type="number" step="0.01" min="0"
+                        <input type="number" step="0.001" min="0"
                                class="form-control @if($isThisModal) @error('base_cantidad') is-invalid @enderror @endif"
                                id="base_cantidad_edit_{{ $row->id }}" name="base_cantidad"
                                value="{{ $valBaseCant }}" required>

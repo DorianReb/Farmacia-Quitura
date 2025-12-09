@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\ResetsPasswords;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Auth\Events\PasswordReset;
 
 class ResetPasswordController extends Controller
 {
@@ -39,9 +42,9 @@ class ResetPasswordController extends Controller
     protected function rules()
     {
         return [
-            'token'                  => ['required'],
-            'correo'                 => ['required', 'email'],
-            'contrasena'             => ['required', 'string', 'min:8', 'confirmed'],
+            'token'      => ['required'],
+            'correo'     => ['required', 'email'],
+            'contrasena' => ['required', 'string', 'min:8', 'confirmed'],
         ];
     }
 
@@ -52,7 +55,7 @@ class ResetPasswordController extends Controller
     protected function credentials(Request $request)
     {
         return [
-            'email'                 => $request->input('correo'),
+            'correo'                => $request->input('correo'),
             'password'              => $request->input('contrasena'),
             'password_confirmation' => $request->input('contrasena_confirmation'),
             'token'                 => $request->input('token'),
@@ -74,6 +77,7 @@ class ResetPasswordController extends Controller
         // Iniciar sesión automáticamente tras reset
         $this->guard()->login($user);
     }
+
 
     /**
      * (Opcional) Redirección dinámica según rol tras el reset:

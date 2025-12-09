@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <link rel="icon" type="image/png" href="{{ asset('favicon.ico') }}">
+    <link rel="icon" href="{{ asset('favicon.ico') }}">
 
     <title>{{ config('app.name', 'Farmacia Quitura') }}</title>
 
@@ -14,10 +14,14 @@
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+    {{-- CSS base de flatpickr + tema material_blue --}}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
 
+    {{-- JS de flatpickr + traducción al español --}}
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+
 
 
 
@@ -59,6 +63,10 @@
         /* Cuando el colapsable está abierto, gira 90° hacia abajo */
         .sidebar a.nav-link[aria-expanded="true"] .chev{
             transform:rotate(90deg);
+        }
+
+        .flatpickr-calendar {
+            z-index: 3000 !important;
         }
 
     </style>
@@ -225,12 +233,13 @@
                         <div id="menuReportes" class="collapse ms-2" data-bs-parent="#sidebarMenu">
                             <ul class="nav flex-column mt-1">
 
-                                <li class="nav-item">
+                                {{--}}<li class="nav-item">
                                     <a class="nav-link" href="{{ route('reportes.rentabilidad') }}">
                                         <i class="fa-solid fa-chart-line"></i>
                                         <span class="ms-2">Rentabilidad</span>
                                     </a>
                                 </li>
+                                {{--}}
 
                                 <li class="nav-item">
                                     <a class="nav-link" href="{{ route('reportes.ranking') }}">
@@ -252,14 +261,14 @@
                                         <span class="ms-2">Stock Bajo</span>
                                     </a>
                                 </li>
-
+                                {{--}}}
                                 <li class="nav-item">
                                     <a class="nav-link" href="{{ route('reportes.sin_ventas') }}">
                                         <i class="fa-solid fa-ban"></i>
                                         <span class="ms-2">Sin Ventas</span>
                                     </a>
                                 </li>
-
+                                {{--}}
                             </ul>
                         </div>
 

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\SendsPasswordResetEmails;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class ForgotPasswordController extends Controller
 {
@@ -31,7 +33,9 @@ class ForgotPasswordController extends Controller
     protected function validateEmail(Request $request)
     {
         $request->validate([
-            'correo' => ['required', 'email'],
+
+            // si quieres validar contra la BD:
+            'correo' => ['required', 'email', 'exists:usuarios,correo'],
         ]);
     }
 
@@ -41,6 +45,14 @@ class ForgotPasswordController extends Controller
      */
     protected function credentials(Request $request)
     {
-        return ['email' => $request->input('correo')];
+        $creds = ['correo' => $request->input('correo')];
+
+        // 🔍 Registrar en el log qué se está mandando realmente
+        Log::info('ForgotPassword credentials()', [
+            'request_all' => $request->all(),
+            'creds'       => $creds,
+        ]);
+
+        return $creds;
     }
 }

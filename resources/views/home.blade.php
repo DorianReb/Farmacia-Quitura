@@ -54,8 +54,8 @@
             <div class="kpi p-3 bg-orange text-white d-flex align-items-center gap-3" style="--bs-bg-opacity:1;background:#ff7a1a;">
                 <div class="icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
                 <div>
-                    <div class="small opacity-90">Próximas a caducar (30 días)</div>
-                    <div class="h4 m-0 fw-bold">{{ $kpis['por_caducar_30d'] ?? 0 }} uds.</div>
+                    <div class="small opacity-90">Lts. próximos a caducar (30 días)</div>
+                    <div class="h4 m-0 fw-bold">{{ $kpis['por_caducar_30d'] ?? 0 }} lotes</div>
                 </div>
             </div>
         </div>
@@ -63,7 +63,7 @@
             <div class="kpi p-3 bg-danger text-white d-flex align-items-center gap-3">
                 <div class="icon"><i class="fa-solid fa-ban"></i></div>
                 <div>
-                    <div class="small opacity-90">Total caducadas</div>
+                    <div class="small opacity-90">Lotes caducados</div>
                     <div class="h4 m-0 fw-bold">{{ $kpis['caducadas'] ?? 0 }}</div>
                 </div>
             </div>
@@ -107,8 +107,8 @@
                                         <i class="fa-regular fa-eye"></i>
                                     </a>
 
-                                    {{-- Venta rápida (si luego filtras por producto en la vista de venta, puedes usar este parámetro) --}}
-                                    <a href="{{ route('venta.index', ['producto' => $item->producto_id ?? null]) }}"
+                                    {{-- Venta rápida --}}
+                                    <a href="{{ route('venta.index', ['codigo_venta_rapida' => $item->codigo_barras]) }}"
                                        class="btn btn-outline-secondary" title="Venta rápida">
                                         <i class="fa-solid fa-bolt"></i>
                                     </a>

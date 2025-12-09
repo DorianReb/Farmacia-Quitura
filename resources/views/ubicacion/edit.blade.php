@@ -48,12 +48,21 @@
 
                     {{-- Nivel --}}
                     <div class="mb-3">
-                        <label for="nivel_id_{{ $ubicacion->id }}" class="form-label">Nivel <span class="text-danger">*</span></label>
-                        <select name="nivel_id" id="nivel_id_{{ $ubicacion->id }}" class="form-select @error('nivel_id') is-invalid @enderror" required>
+                        <label for="nivel_id_{{ $ubicacion->id }}" class="form-label">
+                            Nivel <span class="text-danger">*</span>
+                        </label>
+                        <select name="nivel_id"
+                                id="nivel_id_{{ $ubicacion->id }}"
+                                class="form-select @error('nivel_id') is-invalid @enderror"
+                                required>
                             <option value="">Selecciona un nivel...</option>
                             @foreach($niveles as $nivel)
-                                <option value="{{ $nivel->id }}" {{ old('nivel_id', $ubicacion->nivel_id) == $nivel->id ? 'selected' : '' }}>
-                                    {{ $nivel->nombre }}
+                                @php
+                                    $pas = $nivel->pasillo->codigo ?? '—';
+                                @endphp
+                                <option value="{{ $nivel->id }}"
+                                    {{ old('nivel_id', $ubicacion->nivel_id) == $nivel->id ? 'selected' : '' }}>
+                                    {{ $pas }} – Nivel {{ $nivel->numero }}
                                 </option>
                             @endforeach
                         </select>
@@ -61,6 +70,7 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
+
 
                     {{-- Footer --}}
                     <div class="modal-footer">

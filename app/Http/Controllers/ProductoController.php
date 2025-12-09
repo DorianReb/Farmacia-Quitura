@@ -16,16 +16,106 @@ class ProductoController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Producto::query()->with(['marca','formaFarmaceutica','presentacion','unidadMedida','categoria']);
+        // Texto libre
+        $q = trim($request->input('q', ''));
+        // Filtro por categoría (select)
+        $categoriaFiltro = $request->input('categoria_id'); // id de la categoría
+        // Filtro por receta (select: '', '1', '0')
+        $recetaFiltroParam = $request->input('receta');
 
-        if ($request->filled('q')) {
-            $q = trim($request->q);
-            $query->where('nombre_comercial', 'like', "%{$q}%");
+        // Base de la consulta
+        $query = Producto::query()
+            ->with([
+                'marca',
+                'formaFarmaceutica',
+                'presentacion',
+                'unidadMedida',
+                'categoria',
+                // 🔹 IMPORTANTE: aquí va la relación correcta
+                'asignaUbicaciones.nivel.pasillo',
+            ])
+            // 🔹 Campo calculado: existencias_vigentes = suma de lotes con stock y sin caducar
+            ->withSum([
+                'lotes as existencias_vigentes' => function ($q2) {
+                    $q2->whereNull('deleted_at')
+                        ->where(function ($q3) {
+                            // Aceptar lotes sin fecha de caducidad
+                            $q3->whereNull('fecha_caducidad')
+                                // y lotes con caducidad futura
+                                ->orWhere('fecha_caducidad', '>', now()->toDateString());
+                        })
+                        ->where('cantidad', '>', 0);
+                }
+            ], 'cantidad');
+
+        // ==========================
+        // FILTRO DE BÚSQUEDA GLOBAL
+        // ==========================
+        if ($q !== '') {
+            $lowerQ = mb_strtolower($q, 'UTF-8');
+
+            // 1) Productos que tengan un componente cuyo nombre coincida
+            $productoIdsPorComponente = AsignaComponente::whereHas('componente', function ($c) use ($q) {
+                $c->where('nombre', 'like', "%{$q}%");
+            })
+                ->pluck('producto_id')
+                ->unique()
+                ->values();
+
+            // 2) Traducir texto a filtro de receta (sí/no) SOLO para el buscador de texto
+            $recetaFiltroTexto = null;
+            if (in_array($lowerQ, ['si', 'sí', 'si receta', 'sí receta', 'requiere receta', 'con receta'])) {
+                $recetaFiltroTexto = 1;
+            } elseif (in_array($lowerQ, ['no', 'sin receta', 'no receta'])) {
+                $recetaFiltroTexto = 0;
+            }
+
+            // 3) Aplicar búsqueda sobre varios campos
+            $query->where(function ($sub) use ($q, $productoIdsPorComponente, $recetaFiltroTexto) {
+                $sub->where('nombre_comercial', 'like', "%{$q}%")
+                    ->orWhere('descripcion', 'like', "%{$q}%")
+                    ->orWhere('codigo_barras', 'like', "%{$q}%")
+                    // Marca
+                    ->orWhereHas('marca', function ($m) use ($q) {
+                        $m->where('nombre', 'like', "%{$q}%");
+                    })
+                    // Categoría (por nombre)
+                    ->orWhereHas('categoria', function ($c) use ($q) {
+                        $c->where('nombre', 'like', "%{$q}%");
+                    });
+
+                // Coincidencia por componente
+                if ($productoIdsPorComponente->isNotEmpty()) {
+                    $sub->orWhereIn('id', $productoIdsPorComponente);
+                }
+
+                // Coincidencia por “requiere receta” según texto
+                if (!is_null($recetaFiltroTexto)) {
+                    $sub->orWhere('requiere_receta', $recetaFiltroTexto);
+                }
+            });
         }
 
-        $productos = $query->orderBy('nombre_comercial')->paginate(10);
+        // ==========================
+        // FILTROS EXPLÍCITOS (select)
+        // ==========================
 
-        // ===== AÑADIDO: datos de asigna_componentes para los productos mostrados en esta página =====
+        // Filtro por categoría (id exacto)
+        if (!empty($categoriaFiltro)) {
+            $query->whereHas('categoria', function ($c) use ($categoriaFiltro) {
+                $c->where('id', $categoriaFiltro);
+            });
+        }
+
+        // Filtro explícito por receta (1 = con receta, 0 = sin receta)
+        if ($recetaFiltroParam !== null && $recetaFiltroParam !== '') {
+            $query->where('requiere_receta', (int) $recetaFiltroParam);
+        }
+
+        $productos = $query->orderBy('nombre_comercial')->paginate(10)
+            ->appends($request->query()); // mantiene filtros en la paginación
+
+        // ===== datos de asigna_componentes para los productos mostrados en esta página =====
         $pageIds = $productos->getCollection()->pluck('id');
 
         $asignaciones = $pageIds->isEmpty()
@@ -48,16 +138,17 @@ class ProductoController extends Controller
             ];
         });
 
-        // === Crear una propiedad temporal para mostrar texto compacto ===
-        // === Crear propiedad temporal "resumen" SIN presentación ===
+        // === Crear propiedades temporales: "resumen" y "ubicaciones_texto" ===
         foreach ($productos as $producto) {
-            // Componentes de asigna_componentes como: "Paracetamol 500 mg / 1 tableta, Cafeína 65 mg / 1 tableta"
+            // Componentes de asigna_componentes como:
+            // "Paracetamol 500 mg / 1 tableta, Cafeína 65 mg / 1 tableta"
             $componentesTxt = '';
             if (isset($asignaciones[$producto->id])) {
                 $componentesTxt = $asignaciones[$producto->id]
                     ->map(function ($a) {
-                        $fuerza = rtrim(rtrim(number_format($a->fuerza_cantidad, 2, '.', ''), '0'), '.');
-                        $base   = rtrim(rtrim(number_format($a->base_cantidad, 2, '.', ''), '0'), '.');
+                        // 3 decimales, sin ceros sobrantes
+                        $fuerza = rtrim(rtrim(number_format($a->fuerza_cantidad, 3, '.', ''), '0'), '.');
+                        $base   = rtrim(rtrim(number_format($a->base_cantidad, 3, '.', ''), '0'), '.');
                         $fu     = $a->fuerzaUnidad->nombre ?? '';   // mg, ml, etc.
                         $bu     = $a->baseUnidad->nombre ?? '';     // tableta, cápsula, ml, etc.
                         $comp   = $a->componente->nombre ?? '';
@@ -76,25 +167,41 @@ class ProductoController extends Controller
             // Orden final: nombre + descripción + contenido + forma + componentes
             $partes = array_filter([$nombre, $descripcion ?: null, $contenido ?: null, $forma ?: null]);
             $producto->resumen = trim(implode(' ', $partes).$componentesTxt);
+
+            // 🔹 AQUÍ SE ARMA EL TEXTO DE UBICACIONES
+            if ($producto->relationLoaded('asignaUbicaciones') && $producto->asignaUbicaciones->count()) {
+                $producto->ubicaciones_texto = $producto->asignaUbicaciones
+                    ->map(function ($au) {
+                        // usa el accesor getNombreAttribute() de Nivel
+                        return $au->nivel ? $au->nivel->nombre : null;
+                    })
+                    ->filter()
+                    ->implode(', ');
+
+                if ($producto->ubicaciones_texto === '') {
+                    $producto->ubicaciones_texto = '—';
+                }
+            } else {
+                $producto->ubicaciones_texto = '—';
+            }
         }
-
-
 
         // Para modales (crear/editar asignación)
         $componentes = NombreCientifico::orderBy('nombre')->get(['id','nombre']);
         $unidades    = UnidadMedida::orderBy('nombre')->get(['id','nombre']);
 
-        // Ya los tenías:
-        $marcas         = Marca::all();
-        $formas         = FormaFarmaceutica::all();
-        $presentaciones = Presentacion::all();
-        $unidadesMed    = UnidadMedida::all(); // si tu vista los usa así
-        $categorias     = Categoria::all();
+        // Catálogos para los modals de producto
+        $marcas         = Marca::orderBy('nombre')->get();
+        $formas         = FormaFarmaceutica::orderBy('nombre')->get();
+        $presentaciones = Presentacion::orderBy('nombre')->get();
+        $unidadesMed    = UnidadMedida::orderBy('nombre')->get();
+        $categorias     = Categoria::orderBy('nombre')->get();
 
         return view('producto.index', compact(
             'productos',
             'marcas','formas','presentaciones','unidadesMed','categorias',
-            'asignaciones','metaPorProducto','componentes','unidades' // 👈 AÑADIDOS
+            'asignaciones','metaPorProducto','componentes','unidades',
+            'q','categoriaFiltro','recetaFiltroParam'
         ));
     }
 
@@ -112,26 +219,36 @@ class ProductoController extends Controller
             'requiere_receta' => 'required|boolean',
             'stock_minimo' => 'required|integer|min:0',
             'precio_venta' => 'required|numeric|min:0',
-            'existencias' => 'required|integer|min:0',
             'codigo_barras' => 'nullable|string|max:255',
             'imagen' => 'nullable|image|max:2048',
             'alt_imagen' => 'nullable|string|max:255'
         ]);
 
-        $data = $request->all();
+        // 👇 página desde POST o, en su defecto, 1
+        $page = $request->input('page', 1);
+
+        // Mejor excluimos cualquier existencias que venga del request
+        $data = $request->except('existencias');
+
+        // existencias se controlan por lotes
+        $data['existencias'] = 0;
 
         if ($request->hasFile('imagen')) {
             $data['imagen'] = $request->file('imagen')->store('productos', 'public');
         }
 
-        Producto::create($data);
+        $producto = Producto::create($data);
 
-        return redirect()->route('producto.index')->with('success', 'Producto creado correctamente')->with('from_modal', 'create_producto');
+        return redirect()
+            ->route('producto.index', ['page' => $page])
+            ->with('success', 'Producto creado correctamente')
+            ->with('from_modal', 'create_producto')
+            ->with('edit_id', $producto->id);
     }
 
     public function edit(Producto $producto)
     {
-        $marcas = Marca::all();
+        $marcas = Marca::orderBy('nombre')->get();
         $formas = FormaFarmaceutica::all();
         $presentaciones = Presentacion::all();
         $unidades = UnidadMedida::all();
@@ -154,13 +271,14 @@ class ProductoController extends Controller
             'requiere_receta' => 'required|boolean',
             'stock_minimo' => 'required|integer|min:0',
             'precio_venta' => 'required|numeric|min:0',
-            'existencias' => 'required|integer|min:0',
             'codigo_barras' => 'nullable|string|max:255',
             'imagen' => 'nullable|image|max:2048',
             'alt_imagen' => 'nullable|string|max:255'
         ]);
 
-        $data = $request->all();
+        $page = $request->input('page', 1);
+
+        $data = $request->except('existencias');
 
         if ($request->hasFile('imagen')) {
             $data['imagen'] = $request->file('imagen')->store('productos', 'public');
@@ -168,43 +286,39 @@ class ProductoController extends Controller
 
         $producto->update($data);
 
-        return redirect()->route('producto.index')->with('success', 'Producto actualizado correctamente')->with('from_modal', 'edit_producto')->with('edit_id', $producto->id);
+        return redirect()
+            ->route('producto.index', ['page' => $page])
+            ->with('success', 'Producto actualizado correctamente')
+            ->with('from_modal', 'edit_producto')
+            ->with('edit_id', $producto->id);
     }
 
-    public function destroy(Producto $producto)
+    public function destroy(Request $request, Producto $producto)
     {
+        $page = $request->input('page', 1);
+
         $producto->delete();
-        return redirect()->route('producto.index')->with('success', 'Producto eliminado correctamente');
-    }
 
-    public function lotes()
-    {
-        return $this->hasMany(Lote::class, 'producto_id');
+        return redirect()
+            ->route('producto.index', ['page' => $page])
+            ->with('success', 'Producto eliminado correctamente');
     }
 
     public function menu(Request $request)
     {
         $q = trim($request->q);
 
-        // La consulta se inicia
         $productosBuscados = Producto::query()
             ->with(['lotes', 'marca'])
             ->when($q, function ($query) use ($q) {
-                // Aplicar un grupo de cláusulas WHERE OR
                 $query->where(function($q_inner) use ($q) {
-                    // Búsqueda por Nombre Comercial (flexible)
-                    $q_inner->where('nombre_comercial', 'LIKE', "%{$q}%");
-
-                    // Opcional: Búsqueda por Código de Barras (si se ingresó un código parcial/completo)
-                    $q_inner->orWhere('codigo_barras', 'LIKE', "%{$q}%");
+                    $q_inner->where('nombre_comercial', 'LIKE', "%{$q}%")
+                        ->orWhere('codigo_barras', 'LIKE', "%{$q}%");
                 });
             })
-            // Aseguramos el ordenamiento
             ->orderBy('nombre_comercial', 'asc')
-            // Paginación fija de 10 resultados por modal
             ->paginate(10, ['*'], 'productos_page');
 
-        // DEVOLVER SOLO EL HTML PARCIAL (REQUERIDO POR AJAX)
         return view('producto.menu', [
             'productos' => $productosBuscados,
             'q' => $q

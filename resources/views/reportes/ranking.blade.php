@@ -88,13 +88,26 @@
                     <form class="d-flex flex-wrap align-items-center gap-2" method="GET" action="{{ route('reportes.ranking') }}">
                         <div class="input-group input-group-sm">
                             <span class="input-group-text"><i class="fa-regular fa-calendar"></i></span>
-                            <input type="date" class="form-control" name="from" value="{{ $from }}">
+                            <input
+                                type="text"
+                                class="form-control js-fecha-desde"
+                                name="from"
+                                value="{{ $from }}"
+                                placeholder="Desde"
+                                autocomplete="off">
                         </div>
                         <span class="small">a</span>
                         <div class="input-group input-group-sm">
                             <span class="input-group-text"><i class="fa-regular fa-calendar"></i></span>
-                            <input type="date" class="form-control" name="to" value="{{ $to }}">
+                            <input
+                                type="text"
+                                class="form-control js-fecha-hasta"
+                                name="to"
+                                value="{{ $to }}"
+                                placeholder="Hasta"
+                                autocomplete="off">
                         </div>
+
 
                         <div class="input-group input-group-sm">
                             <label class="input-group-text">
@@ -223,6 +236,36 @@
         </div>
 
     </div>
+
+    {{-- Flatpickr (calendarios) --}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    {{-- Tema opcional (puedes cambiarlo por otro de Flatpickr si quieres) --}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Configuración común
+            const opcionesFecha = {
+                dateFormat: 'Y-m-d',      // Formato que espera el controlador
+                allowInput: true,
+                locale: flatpickr.l10ns.es
+            };
+
+            flatpickr('.js-fecha-desde', {
+                ...opcionesFecha,
+                defaultDate: '{{ $from }}'
+            });
+
+            flatpickr('.js-fecha-hasta', {
+                ...opcionesFecha,
+                defaultDate: '{{ $to }}'
+            });
+        });
+    </script>
+
 
     {{-- ======= Chart.js ======= --}}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

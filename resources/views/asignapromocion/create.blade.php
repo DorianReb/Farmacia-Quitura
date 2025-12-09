@@ -30,12 +30,24 @@
                         <select name="lote_id" id="lote_id" class="form-select" required>
                             <option value="">Seleccione lote</option>
                             @foreach($lotes as $lote)
+                                @php
+                                    $p = $lote->producto;
+
+                                    // Quitamos descripción completamente
+                                    $nombre    = trim($p->nombre_comercial ?? '');
+                                    $contenido = trim($p->contenido ?? '');
+                                    $forma     = trim($p->formaFarmaceutica->nombre ?? '');
+
+                                    // Construimos el texto CORTO
+                                    $partes = array_filter([$nombre, $contenido ?: null, $forma ?: null]);
+                                    $textoCorto = implode(' ', $partes);
+                                @endphp
+
                                 <option value="{{ $lote->id }}">
-                                    {{ $lote->codigo }} - {{ $lote->producto->resumen ?? $lote->producto->nombre_comercial ?? '—' }}
+                                    {{ $lote->codigo }} - {{ $textoCorto }}
                                     (vence: {{ \Carbon\Carbon::parse($lote->fecha_caducidad)->format('d/m/Y') }})
                                 </option>
                             @endforeach
-
 
                         </select>
                     </div>

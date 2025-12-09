@@ -43,55 +43,77 @@
             }
         }
 
+        // Helper numérico para truncar a 2 decimales (sin redondear)
+        function trunc2(x) {
+            x = Number(x) || 0;
+            return Math.trunc(x * 100) / 100;
+        }
+
         document.addEventListener('DOMContentLoaded', async function () {
             console.log('📌 DOM cargado, inicializando venta JS...');
 
-            let listaVenta = [];
+            // 🔹 Cargar carrito inicial desde Laravel (sesión)
+            let listaVenta = {{ Js::from($itemsEnVenta ?? []) }};
+            if (!Array.isArray(listaVenta)) {
+                listaVenta = [];
+            }
             let stockMaxManual = null; // tope dinámico según el producto escrito en el modal
+            let productoDetallesActual = null;
 
-            const tbody = document.querySelector('#listaVentaTable tbody');
+            const tbody     = document.querySelector('#listaVentaTable tbody');
             const totalSpan = document.getElementById('totalVentaSpan');
 
             const formBuscarProducto = document.getElementById('formBuscarProducto');
-            const inputCodigo = document.getElementById('codigo_barras_input');
+            const inputCodigo        = document.getElementById('codigo_barras_input');
 
             // --- Modales y Botones ---
-            const modalElement = document.getElementById('modalAgregarManual');
-            const formAgregarManual = document.getElementById('formAgregarManual');
-            const modalManual = modalElement ? new bootstrap.Modal(modalElement) : null;
-            const inputCodigoManual = document.getElementById('manual_codigo_barras');
+            const modalElement        = document.getElementById('modalAgregarManual');
+            const formAgregarManual   = document.getElementById('formAgregarManual');
+            const modalManual         = modalElement ? new bootstrap.Modal(modalElement) : null;
+            const inputCodigoManual   = document.getElementById('manual_codigo_barras');
             const inputCantidadManual = document.getElementById('manual_cantidad');
-            const modalManualError = document.getElementById('modalManualError');
+            const modalManualError    = document.getElementById('modalManualError');
 
             const modalDetallesElement = document.getElementById('modalDetallesProducto');
-            const modalDetalles = modalDetallesElement ? new bootstrap.Modal(modalDetallesElement) : null;
+            const modalDetalles        = modalDetallesElement ? new bootstrap.Modal(modalDetallesElement) : null;
 
             const modalMenuElement = document.getElementById('menuProductosModal');
-            const modalMenu = modalMenuElement ? new bootstrap.Modal(modalMenuElement) : null;
-            const modalMenuBody = modalMenuElement ? modalMenuElement.querySelector('.modal-body') : null;
+            const modalMenu        = modalMenuElement ? new bootstrap.Modal(modalMenuElement) : null;
+            const modalMenuBody    = modalMenuElement ? modalMenuElement.querySelector('.modal-body') : null;
 
             // Elementos de Pago
-            const formProcesarVenta = document.getElementById('formProcesarVenta');
-            const inputProductosVenta = document.getElementById('inputProductosVenta');
-            const modalPagoElement = document.getElementById('modalPago');
-            const modalPago = modalPagoElement ? new bootstrap.Modal(modalPagoElement) : null;
-            const modalTotalPagar = document.getElementById('modalTotalPagar');
-            const btnConfirmarVenta = document.getElementById('btnConfirmarVenta');
+            const formProcesarVenta   = document.getElementById('formProcesarVenta');
+            const modalPagoElement    = document.getElementById('modalPago');
+            const modalPago           = modalPagoElement ? new bootstrap.Modal(modalPagoElement) : null;
+            const modalTotalPagar     = document.getElementById('modalTotalPagar');
+            const btnConfirmarVenta   = document.getElementById('btnConfirmarVenta');
+            const inputMontoRecibido  = document.getElementById('monto_recibido_input');
+            const cambioCalculadoSpan = document.getElementById('cambioCalculadoSpan');
 
             // Bandera para apertura automática del menú
             const abrirModalMenuAutomatico = {{ Js::from(isset($abrirModalMenu) ? $abrirModalMenu : false) }};
+            const codigoVentaRapida        = {{ Js::from($codigoVentaRapida ?? null) }};
 
             // RUTA API
             const RUTA_BUSCAR_API = '{{ route('venta.buscar.api', ['codigo' => '0']) }}';
+            const RUTA_SYNC_CARRITO = '{{ route('venta.syncCarrito') }}';
 
-            // CSRF
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')
-                ? document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                : '';
 
             // ===================== INICIO =====================
             if (abrirModalMenuAutomatico && modalMenu) {
                 modalMenu.show();
+            }
+
+            // ===================== VENTA RÁPIDA DESDE HOME =====================
+            if (codigoVentaRapida) {
+                if (modalManual && inputCodigoManual) {
+                    modalManual.show();
+                    inputCodigoManual.value = codigoVentaRapida;
+                    actualizarStockEnModal();
+                } else {
+                    // Fallback: agregar directamente
+                    agregarProducto(codigoVentaRapida, 1);
+                }
             }
 
             // ===================== UTILIDADES =====================
@@ -101,26 +123,39 @@
                     let total = 0;
 
                     listaVenta.forEach((item, index) => {
-                        total += item.subtotal;
+                        const subtotalBruto   = trunc2(item.subtotal_bruto ?? (item.precio * item.cantidad));
+                        const subtotalFinal   = trunc2(item.subtotal ?? subtotalBruto);
+                        const promoPorcentaje = Number(item.promo_porcentaje || 0);
+
+                        total += subtotalFinal;
+
                         tbody.innerHTML += `
                         <tr>
                             <td>${item.codigo_barras}</td>
                             <td>${item.nombre}</td>
-                            <td>$${item.precio.toFixed(2)}</td>
+                            <td>${item.ubicacion || '-'}</td>
+                            <td>$${trunc2(item.precio).toFixed(2)}</td>
                             <td>${item.cantidad}</td>
                             <td>${item.stock}</td>
                             <td>${item.lote_codigo || item.lote_id || '-'}</td>
-                            <td>-</td>
-                            <td>$${item.subtotal.toFixed(2)}</td>
+                            <td>$${subtotalBruto.toFixed(2)}</td>
+                            <td>${
+                            promoPorcentaje > 0
+                                ? promoPorcentaje.toFixed(2) + '%'
+                                : '-'
+                        }</td>
+                            <td>$${subtotalFinal.toFixed(2)}</td>
                             <td class="text-end">
-                                <button class="btn btn-sm btn-danger" onclick="eliminarProducto(${index})">
-                                    Eliminar
+                                <button class="btn btn-danger shadow-sm rounded-pill btn-icon ms-1"
+                                        onclick="eliminarProducto(${index})"
+                                        title="Eliminar">
+                                    <i class="fa-regular fa-trash-can"></i>
                                 </button>
                             </td>
                         </tr>`;
                     });
 
-                    totalSpan.textContent = `$${total.toFixed(2)}`;
+                    totalSpan.textContent = `$${trunc2(total).toFixed(2)}`;
                 } catch (e) {
                     console.error('[ERROR] renderTabla()', e);
                 }
@@ -168,14 +203,20 @@
                     document.getElementById('producto_nombre_cientifico').textContent =
                         producto.componentes_texto ?? producto.nombre_cientifico ?? '-';
 
-                    document.getElementById('producto_forma').textContent = producto.forma_farmaceutica?.nombre ?? '-';
-                    document.getElementById('producto_marca').textContent = producto.marca?.nombre ?? '-';
+                    document.getElementById('producto_forma').textContent        = producto.forma_farmaceutica?.nombre ?? '-';
+                    document.getElementById('producto_marca').textContent        = producto.marca?.nombre ?? '-';
                     document.getElementById('producto_presentacion').textContent = producto.presentacion?.nombre ?? '-';
-                    document.getElementById('producto_categoria').textContent = producto.categoria?.nombre ?? '-';
-                    document.getElementById('producto_nombre').textContent = producto.nombre_comercial ?? '-';
-                    document.getElementById('producto_codigo').textContent = producto.codigo_barras ?? '-';
-                    document.getElementById('producto_contenido').textContent = producto.contenido ?? '-';
-                    document.getElementById('producto_receta').textContent = producto.requiere_receta ? 'Sí' : 'No';
+                    document.getElementById('producto_categoria').textContent   = producto.categoria?.nombre ?? '-';
+                    document.getElementById('producto_nombre').textContent      = producto.nombre_comercial ?? '-';
+                    document.getElementById('producto_codigo').textContent      = producto.codigo_barras ?? '-';
+
+// Contenido + unidad (si existe), si no, el contenido "pelón"
+                    document.getElementById('producto_contenido').textContent =
+                        producto.contenido_formateado
+                        ?? producto.contenido
+                        ?? '-';
+
+                    document.getElementById('producto_receta').textContent      = producto.requiere_receta ? 'Sí' : 'No';
                 } catch (e) {
                     console.error('[ERROR] mostrarProductoUI()', e);
                 }
@@ -196,23 +237,33 @@
 
                     const producto = await res.json();
 
-                    document.getElementById('detalles_producto_nombre').textContent = producto.nombre_comercial ?? 'N/A';
-                    document.getElementById('detalles_producto_codigo').textContent = producto.codigo_barras ?? 'N/A';
-                    document.getElementById('detalles_producto_ubicacion').textContent = producto.ubicaciones_texto ?? 'N/A';
-                    document.getElementById('detalles_producto_cientifico').textContent =
+                    // Guardamos el producto actual para poder agregarlo luego
+                    productoDetallesActual = producto;
+
+                    document.getElementById('detalles_producto_nombre').textContent       = producto.nombre_comercial ?? 'N/A';
+                    document.getElementById('detalles_producto_codigo').textContent       = producto.codigo_barras ?? 'N/A';
+                    document.getElementById('detalles_producto_ubicacion').textContent    = producto.ubicaciones_texto ?? 'N/A';
+                    document.getElementById('detalles_producto_cientifico').textContent   =
                         producto.componentes_texto ?? producto.nombre_cientifico ?? 'N/A';
-                    document.getElementById('detalles_producto_forma').textContent = producto.forma_farmaceutica?.nombre ?? 'N/A';
-                    document.getElementById('detalles_producto_contenido').textContent = producto.contenido ?? 'N/A';
-                    document.getElementById('detalles_producto_marca').textContent = producto.marca?.nombre ?? 'N/A';
+                    document.getElementById('detalles_producto_forma').textContent        = producto.forma_farmaceutica?.nombre ?? 'N/A';
+                    document.getElementById('detalles_producto_contenido').textContent =
+                        producto.contenido_formateado
+                        ?? producto.contenido
+                        ?? 'N/A';
+                    document.getElementById('detalles_producto_marca').textContent        = producto.marca?.nombre ?? 'N/A';
                     document.getElementById('detalles_producto_presentacion').textContent = producto.presentacion?.nombre ?? 'N/A';
-                    document.getElementById('detalles_producto_receta').textContent = producto.requiere_receta ? 'Sí' : 'No';
-                    document.getElementById('detalles_producto_categoria').textContent = producto.categoria?.nombre ?? 'N/A';
+                    document.getElementById('detalles_producto_receta').textContent       = producto.requiere_receta ? 'Sí' : 'No';
+                    document.getElementById('detalles_producto_categoria').textContent    = producto.categoria?.nombre ?? 'N/A';
 
                     setImgWithFallback(
                         document.getElementById('detalles_producto_imagen'),
                         getProductoImgUrl(producto),
                         producto.nombre_comercial
                     );
+
+                    // Resetear cantidad a 1 cada vez que se abre
+                    const inputCantDet = document.getElementById('detalles_cantidad');
+                    if (inputCantDet) inputCantDet.value = 1;
 
                     if (modalDetalles) {
                         modalDetalles.show();
@@ -223,8 +274,10 @@
                 }
             };
 
-            // ===================== AGREGAR PRODUCTO (ESCÁNER + MANUAL) =====================
-            async function agregarProducto(codigo, cantidadSolicitada = 1) {
+            // ===================== AGREGAR PRODUCTO (ESCÁNER + MANUAL + DETALLES) =====================
+            async function agregarProducto(codigo, cantidadSolicitada = 1, opciones = {}) {
+                const { silenciarAvisoStock = false } = opciones;
+
                 if (!codigo) {
                     await showError('Código inválido', 'Ingrese un código de barras válido.');
                     return;
@@ -299,11 +352,13 @@
                     if (cantidadSolicitada > stockTotalDisponible) {
                         cantidadFinal = stockTotalDisponible;
 
-                        await showInfo(
-                            'Stock insuficiente',
-                            `Solicitaste ${cantidadSolicitada} unidades, pero solo hay ${stockTotalDisponible} disponibles. ` +
-                            `Se agregarán automáticamente esas ${stockTotalDisponible} unidades a la lista.`
-                        );
+                        if (!silenciarAvisoStock) {
+                            await showInfo(
+                                'Stock insuficiente',
+                                `Solicitaste ${cantidadSolicitada} unidades, pero solo hay ${stockTotalDisponible} disponibles. ` +
+                                `Se agregarán automáticamente esas ${stockTotalDisponible} unidades a la lista.`
+                            );
+                        }
                     }
 
                     // Repartir la cantidad FINAL entre lotes (FEFO)
@@ -322,6 +377,14 @@
                         const tomar = Math.min(restante, disponible);
                         if (tomar <= 0) continue;
 
+                        // === PROMOCIÓN PARA ESTE LOTE (desde la API) ===
+                        const promo = parseFloat(lote.promo_porcentaje || 0);
+
+                        // === Cálculo tipo procedure (TRUNCATE a 2 decimales) ===
+                        const subtotalBruto = Math.trunc(precio * tomar * 100) / 100;
+                        const descMonto     = Math.trunc(subtotalBruto * (promo / 100) * 100) / 100;
+                        const subtotalLinea = subtotalBruto - descMonto;
+
                         let itemExistente = listaVenta.find(i =>
                             i.codigo_barras === producto.codigo_barras &&
                             i.lote_id === lote.id
@@ -329,17 +392,26 @@
 
                         if (itemExistente) {
                             itemExistente.cantidad += tomar;
-                            itemExistente.subtotal = itemExistente.cantidad * precio;
+
+                            const nuevoSubtotalBruto = Math.trunc(precio * itemExistente.cantidad * 100) / 100;
+                            const nuevoDescMonto     = Math.trunc(nuevoSubtotalBruto * (promo / 100) * 100) / 100;
+
+                            itemExistente.subtotal_bruto   = nuevoSubtotalBruto;
+                            itemExistente.subtotal         = nuevoSubtotalBruto - nuevoDescMonto;
+                            itemExistente.promo_porcentaje = promo;
                         } else {
                             listaVenta.push({
-                                codigo_barras: producto.codigo_barras,
-                                nombre: producto.nombre_comercial,
-                                precio: precio,
-                                cantidad: tomar,
-                                stock: lote.cantidad,
-                                lote_id: lote.id,
-                                lote_codigo: lote.codigo,
-                                subtotal: tomar * precio
+                                codigo_barras:    producto.codigo_barras,
+                                nombre:           producto.resumen || producto.nombre_comercial,
+                                ubicacion:        producto.ubicaciones_texto || '-',
+                                precio:           precio,
+                                cantidad:         tomar,
+                                stock:            lote.cantidad,
+                                lote_id:          lote.id,
+                                lote_codigo:      lote.codigo,
+                                promo_porcentaje: promo,
+                                subtotal_bruto:   subtotalBruto,
+                                subtotal:         subtotalLinea
                             });
                         }
 
@@ -355,6 +427,7 @@
                     await showError('Error al agregar producto', err.message);
                 }
             }
+
 
             // ===================== BUSCAR POR NOMBRE =====================
             async function buscarProductoPorNombre(query) {
@@ -386,82 +459,104 @@
                 }
             }
 
-            // ===================== CONFIRMAR VENTA =====================
+            // ===================== CONFIRMAR VENTA (FORM NORMAL) =====================
             async function confirmarVenta() {
                 if (listaVenta.length === 0) {
-                    showAlert('Lista vacía', 'No hay productos en la lista de venta.', 'warning');
+                    await showAlert('Lista vacía', 'No hay productos en la lista de venta.', 'warning');
                     return;
                 }
 
+                // Total actual (texto → número)
+                const textoTotal = totalSpan.textContent || '$0.00';
+                const total      = parseFloat(textoTotal.replace(/[^\d.-]/g, '')) || 0;
+
+                const monto = inputMontoRecibido
+                    ? parseFloat(inputMontoRecibido.value || '0')
+                    : 0;
+
+                if (!inputMontoRecibido || isNaN(monto) || monto <= 0) {
+                    await showError(
+                        'Monto requerido',
+                        'Capture el monto recibido del cliente para continuar.'
+                    );
+                    return;
+                }
+
+                if (monto < total) {
+                    const faltante = trunc2(total - monto).toFixed(2);
+                    await showError(
+                        'Monto insuficiente',
+                        `El monto recibido es menor al total. Faltan $${faltante}.`
+                    );
+                    return;
+                }
+
+                const cambio = trunc2(monto - total);
+
+                // Cerrar modal de pago
                 modalPago?.hide();
 
-                const productosParaEnvio = listaVenta.map(item => ({
-                    codigo_barras: item.codigo_barras,
-                    cantidad: item.cantidad,
-                    lote: item.lote_id
-                }));
+                // 1) El formulario YA tiene @csrf desde Blade.
+                //    NO lo borres. Solo elimina inputs dinámicos de vueltas anteriores.
+                const dinamicos = formProcesarVenta.querySelectorAll(
+                    'input[name^="lotes["], input[name="monto_recibido"]'
+                );
+                dinamicos.forEach(el => el.remove());
 
-                const jsonBody = JSON.stringify({
-                    productos: productosParaEnvio
+                // 2) Agregar lotes
+                listaVenta.forEach((item, index) => {
+                    const inputLote = document.createElement('input');
+                    inputLote.type  = 'hidden';
+                    inputLote.name  = `lotes[${index}][lote_id]`;
+                    inputLote.value = item.lote_id;
+                    formProcesarVenta.appendChild(inputLote);
+
+                    const inputCant = document.createElement('input');
+                    inputCant.type  = 'hidden';
+                    inputCant.name  = `lotes[${index}][cantidad]`;
+                    inputCant.value = item.cantidad;
+                    formProcesarVenta.appendChild(inputCant);
                 });
 
-                try {
-                    const url = formProcesarVenta.action;
+                // 3) Monto recibido
+                const inputMonto = document.createElement('input');
+                inputMonto.type  = 'hidden';
+                inputMonto.name  = 'monto_recibido';
+                inputMonto.value = monto.toFixed(2);
+                formProcesarVenta.appendChild(inputMonto);
 
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken
-                        },
-                        body: jsonBody
-                    });
-
-                    const result = await response.json();
-
-                    if (!response.ok) {
-                        const errorMsg = result.message || 'Error de red o de servidor.';
-
-                        if (result.errors) {
-                            const firstError = Object.values(result.errors).flat()[0];
-                            throw new Error(firstError || errorMsg);
-                        }
-                        throw new Error(errorMsg);
-                    }
-
-                    listaVenta = [];
-                    renderTabla();
-                    mostrarProductoUI({});
-
-                    showAlert('Venta registrada', `Venta registrada con éxito. ID: ${result.venta_id}`, 'success');
-
-                } catch (error) {
-                    console.error('Error al registrar la venta:', error);
-                    if (error.message.includes('Unexpected token')) {
-                        showAlert(
-                            'Error de sesión',
-                            'Error de Sesión/Seguridad. Por favor, recargue la página (F5) e intente de nuevo.',
-                            'error'
-                        );
-                    } else {
-                        showAlert('Error al procesar la venta', error.message, 'error');
-                    }
-                }
+                // 4) Enviar formulario
+                formProcesarVenta.submit();
             }
 
             // ===================== STOCK EN MODAL MANUAL =====================
             async function actualizarStockEnModal() {
-                const codigo = inputCodigoManual.value.trim();
+                const codigo   = inputCodigoManual.value.trim();
                 const errorBox = modalManualError;
+                const infoBox  = document.getElementById('manualInfoProducto');
+
+                function limpiarFichaManual() {
+                    if (!infoBox) return;
+                    infoBox.classList.add('d-none');
+                    document.getElementById('manual_producto_nombre').textContent       = '---';
+                    document.getElementById('manual_producto_codigo').textContent       = '---';
+                    document.getElementById('manual_producto_ubicacion').textContent    = '---';
+                    document.getElementById('manual_producto_componentes').textContent  = '---';
+                    document.getElementById('manual_producto_forma').textContent        = '---';
+                    document.getElementById('manual_producto_contenido').textContent    = '---';
+                    document.getElementById('manual_producto_marca').textContent        = '---';
+                    document.getElementById('manual_producto_presentacion').textContent = '---';
+                    document.getElementById('manual_producto_receta').textContent       = '---';
+                    document.getElementById('manual_producto_categoria').textContent    = '---';
+                }
 
                 stockMaxManual = null;
                 inputCantidadManual.removeAttribute('max');
                 errorBox.classList.add('d-none');
                 errorBox.textContent = '';
+                limpiarFichaManual();
 
-                if (!codigo) {
-                    return;
-                }
+                if (!codigo) return;
 
                 try {
                     const url = RUTA_BUSCAR_API.replace('/0', '/' + codigo);
@@ -524,20 +619,33 @@
                         inputCantidadManual.value = totalDisponible;
                     }
 
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire({
-                            icon: 'info',
-                            title: 'Stock detectado',
-                            text: `Hay ${totalDisponible} unidades disponibles de este producto. La cantidad en el campo se limitará a ese máximo.`,
-                            timer: 3000,
-                            showConfirmButton: false
-                        });
-                    }
+                    await showInfo(
+                        'Stock detectado',
+                        `Hay ${totalDisponible} unidades disponibles de este producto.\n\n` +
+                        `La cantidad que capture no podrá superar ese máximo.`
+                    );
 
+                    if (infoBox) {
+                        const componentesTexto = producto.componentes_texto ?? producto.nombre_cientifico ?? '-';
+
+                        document.getElementById('manual_producto_nombre').textContent       = producto.nombre_comercial ?? '---';
+                        document.getElementById('manual_producto_codigo').textContent       = producto.codigo_barras ?? '---';
+                        document.getElementById('manual_producto_ubicacion').textContent    = producto.ubicaciones_texto ?? '-';
+                        document.getElementById('manual_producto_componentes').textContent  = componentesTexto;
+                        document.getElementById('manual_producto_forma').textContent        = producto.forma_farmaceutica?.nombre ?? '-';
+                        document.getElementById('manual_producto_contenido').textContent    = producto.contenido ?? '-';
+                        document.getElementById('manual_producto_marca').textContent        = producto.marca?.nombre ?? '-';
+                        document.getElementById('manual_producto_presentacion').textContent = producto.presentacion?.nombre ?? '-';
+                        document.getElementById('manual_producto_receta').textContent       = producto.requiere_receta ? 'Sí' : 'No';
+                        document.getElementById('manual_producto_categoria').textContent    = producto.categoria?.nombre ?? '-';
+
+                        infoBox.classList.remove('d-none');
+                    }
                 } catch (err) {
                     console.error('[ERROR actualizarStockEnModal()]', err);
                     errorBox.classList.remove('d-none');
                     errorBox.textContent = 'Error al consultar el producto. Intente de nuevo.';
+                    limpiarFichaManual();
                 }
             }
 
@@ -594,15 +702,11 @@
                     if (stockMaxManual !== null && cantidad > stockMaxManual) {
                         cantidad = stockMaxManual;
                         inputCantidadManual.value = stockMaxManual;
-
-                        await showInfo(
-                            'Cantidad ajustada',
-                            `La cantidad solicitada supera el stock disponible. ` +
-                            `Se ajustó automáticamente a ${stockMaxManual} unidades.`
-                        );
                     }
 
-                    await agregarProducto(codigo, cantidad);
+                    // Aquí indicamos que no queremos el 2º Swal de “stock insuficiente”
+                    await agregarProducto(codigo, cantidad, { silenciarAvisoStock: true });
+
                     modalManual?.hide();
                     formAgregarManual.reset();
                     stockMaxManual = null;
@@ -618,16 +722,112 @@
                 });
             }
 
+            // Al abrir modal de pago: mostrar total y resetear campos
             if (modalPagoElement) {
                 modalPagoElement.addEventListener('show.bs.modal', function () {
-                    const totalActual = totalSpan.textContent;
+                    const totalActual = totalSpan.textContent || '$0.00';
                     modalTotalPagar.textContent = totalActual;
+
+                    if (inputMontoRecibido) inputMontoRecibido.value = '';
+                    if (cambioCalculadoSpan) cambioCalculadoSpan.textContent = '$0.00';
+                });
+            }
+
+            // Calcular cambio en tiempo real
+            if (inputMontoRecibido) {
+                inputMontoRecibido.addEventListener('input', function () {
+                    const textoTotal = totalSpan.textContent || '$0.00';
+                    const total      = parseFloat(textoTotal.replace(/[^\d.-]/g, '')) || 0;
+                    const monto      = parseFloat(inputMontoRecibido.value || '0') || 0;
+
+                    let textoCambio = '$0.00';
+
+                    if (monto >= total && total > 0) {
+                        const cambio = trunc2(monto - total);
+                        textoCambio  = '$' + cambio.toFixed(2);
+                    } else if (monto > 0 && total > 0 && monto < total) {
+                        const faltante = trunc2(total - monto);
+                        textoCambio    = 'Faltan $' + faltante.toFixed(2);
+                    }
+
+                    if (cambioCalculadoSpan) {
+                        cambioCalculadoSpan.textContent = textoCambio;
+                    }
                 });
             }
 
             if (btnConfirmarVenta) {
                 btnConfirmarVenta.addEventListener('click', confirmarVenta);
             }
+
+            // Formulario de filtros (el que hace GET a venta.index)
+            const formFiltrosProductos = document.querySelector('form[action="{{ route('venta.index') }}"]');
+            let enviandoFiltros = false;
+
+            if (formFiltrosProductos) {
+                formFiltrosProductos.addEventListener('submit', function (e) {
+                    // Si ya estamos reenviando, no interceptar de nuevo
+                    if (enviandoFiltros) return;
+
+                    e.preventDefault();
+
+                    // Sincronizar carrito actual en sesión antes de recargar
+                    fetch(RUTA_SYNC_CARRITO, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        },
+                        body: JSON.stringify({ items: listaVenta }),
+                    })
+                        .then(res => res.ok ? res.json() : Promise.reject(res))
+                        .then(() => {
+                            enviandoFiltros = true;
+                            formFiltrosProductos.submit(); // ahora sí se envía de verdad
+                        })
+                        .catch(err => {
+                            console.error('[ERROR] syncCarrito antes de filtros', err);
+                            // Como fallback, enviamos el formulario aunque falle el sync
+                            enviandoFiltros = true;
+                            formFiltrosProductos.submit();
+                        });
+                });
+            }
+
+
+            // ===================== AGREGAR DESDE EL MODAL DE DETALLES =====================
+            const btnAgregarDesdeDetalles = document.getElementById('btnAgregarDesdeDetalles');
+            const inputCantidadDetalles   = document.getElementById('detalles_cantidad');
+
+            if (btnAgregarDesdeDetalles) {
+                btnAgregarDesdeDetalles.addEventListener('click', async function () {
+                    if (!productoDetallesActual) {
+                        await showError('Sin producto', 'No hay ningún producto cargado en el panel de detalles.');
+                        return;
+                    }
+
+                    let cantidad = 1;
+                    if (inputCantidadDetalles) {
+                        cantidad = parseInt(inputCantidadDetalles.value || '1', 10);
+                        if (isNaN(cantidad) || cantidad <= 0) {
+                            cantidad = 1;
+                            inputCantidadDetalles.value = '1';
+                        }
+                    }
+
+                    await agregarProducto(
+                        productoDetallesActual.codigo_barras,
+                        cantidad
+                    );
+
+                    if (modalDetalles) {
+                        modalDetalles.hide();
+                    }
+                });
+            }
+
+            renderTabla();
+
         });
     </script>
 @endpush

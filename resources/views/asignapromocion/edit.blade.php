@@ -42,12 +42,22 @@
                                 required>
                             <option value="">Seleccione lote</option>
                             @foreach($lotes as $lote)
-                                <option value="{{ $lote->id }}"
-                                        @if($asigna->lote_id == $lote->id) selected @endif>
-                                    <td>{{ $asigna->lote->producto->resumen ?? $asigna->lote->producto->nombre_comercial ?? '—' }}</td>
+                                @php
+                                    $p = $lote->producto;
+                                    $nombre    = trim($p->nombre_comercial ?? '');
+                                    $contenido = trim($p->contenido ?? '');
+                                    $forma     = trim($p->formaFarmaceutica->nombre ?? '');
+
+                                    $partesCortas = array_filter([$nombre, $contenido ?: null, $forma ?: null]);
+                                    $etiquetaProducto = implode(' ', $partesCortas);
+                                @endphp
+
+                                <option value="{{ $lote->id }}">
+                                    {{ $lote->codigo }} - {{ $etiquetaProducto }}
                                     (vence: {{ \Carbon\Carbon::parse($lote->fecha_caducidad)->format('d/m/Y') }})
                                 </option>
                             @endforeach
+
                         </select>
                     </div>
                 </div>

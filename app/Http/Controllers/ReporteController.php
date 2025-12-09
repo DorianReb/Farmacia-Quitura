@@ -491,52 +491,90 @@ class ReporteController extends Controller
     // ===================== CADUCIDAD =====================
     public function caducidad(Request $request)
     {
-        $dias = (int) $request->query('dias', 60);
-        if (! in_array($dias, [30, 60, 90])) {
-            $dias = 60;
+        $dias  = (int) $request->input('dias', 30);
+        $desde = $request->input('desde'); // opcional para Flatpickr
+        $hasta = $request->input('hasta'); // opcional para Flatpickr
+
+        $hoy    = now()->toDateString();
+        $limite = now()->addDays($dias)->toDateString();
+
+        // ==========================
+        // BASE QUERY (Lotes + Producto)
+        // ==========================
+        $base = DB::table('lotes as l')
+            ->join('productos as p', 'p.id', '=', 'l.producto_id')
+            ->leftJoin('unidades_medida as um', 'um.id', '=', 'p.unidad_medida_id')
+            ->leftJoin('formas_farmaceuticas as ff', 'ff.id', '=', 'p.forma_farmaceutica_id')
+            ->select([
+                'l.id',
+                'l.codigo as lote',
+                'l.fecha_caducidad',
+                'l.cantidad as unidades_restantes',
+
+                // 👇 CONCATENAMOS EL NOMBRE DE PRODUCTO (similar a "resumen")
+                DB::raw("
+                    CONCAT_WS(
+                        ' ',
+                        p.nombre_comercial,
+                        NULLIF(TRIM(p.descripcion), ''),
+                        NULLIF(
+                            TRIM(
+                                CONCAT(
+                                    COALESCE(NULLIF(TRIM(p.contenido), ''), ''),
+                                    CASE
+                                        WHEN um.nombre IS NOT NULL
+                                             AND TRIM(um.nombre) <> ''
+                                        THEN CONCAT(' ', um.nombre)
+                                        ELSE ''
+                                    END
+                                )
+                            ),
+                            ''
+                        ),
+                        NULLIF(TRIM(ff.nombre), '')
+                    ) as producto
+                "),
+            ])
+            ->whereNull('l.deleted_at')
+            ->whereNull('p.deleted_at')
+            ->where('l.cantidad', '>', 0);
+
+        // ==========================
+        // FILTRO OPCIONAL POR RANGO DE FECHAS (Flatpickr)
+        // ==========================
+        if ($desde) {
+            $base->whereDate('l.fecha_caducidad', '>=', $desde);
+        }
+        if ($hasta) {
+            $base->whereDate('l.fecha_caducidad', '<=', $hasta);
         }
 
-        $hoy      = Carbon::today();
-        $finRango = $hoy->copy()->addDays($dias);
-
-        // Próximos a caducar (entre hoy y hoy + N días)
-        $proximos = DB::table('lotes')
-            ->join('productos', 'productos.id', '=', 'lotes.producto_id')
-            ->whereNull('lotes.deleted_at')
-            ->where('lotes.cantidad', '>', 0)
-            ->whereBetween('lotes.fecha_caducidad', [
-                $hoy->toDateString(),
-                $finRango->toDateString(),
-            ])
-            ->orderBy('lotes.fecha_caducidad')
-            ->select(
-                'lotes.id',
-                'productos.nombre_comercial as producto',
-                'lotes.codigo as lote',
-                'lotes.cantidad as unidades_restantes',
-                'lotes.fecha_caducidad',
-                DB::raw('DATEDIFF(lotes.fecha_caducidad, CURDATE()) as dias_restantes')
-            )
+        // ==========================
+        // PRÓXIMOS A CADUCAR (entre hoy y hoy + $dias)
+        // ==========================
+        $proximos = (clone $base)
+            ->whereDate('l.fecha_caducidad', '>=', $hoy)
+            ->whereDate('l.fecha_caducidad', '<=', $limite)
+            ->addSelect(DB::raw("DATEDIFF(l.fecha_caducidad, '{$hoy}') as dias_restantes"))
+            ->orderBy('l.fecha_caducidad', 'asc')
             ->paginate(10, ['*'], 'proximos_page');
 
-        // Caducados (antes de hoy)
-        $caducados = DB::table('lotes')
-            ->join('productos', 'productos.id', '=', 'lotes.producto_id')
-            ->whereNull('lotes.deleted_at')
-            ->where('lotes.cantidad', '>', 0)
-            ->where('lotes.fecha_caducidad', '<', $hoy->toDateString())
-            ->orderBy('lotes.fecha_caducidad')
-            ->select(
-                'lotes.id',
-                'productos.nombre_comercial as producto',
-                'lotes.codigo as lote',
-                'lotes.cantidad as unidades_restantes',
-                'lotes.fecha_caducidad',
-                DB::raw('DATEDIFF(CURDATE(), lotes.fecha_caducidad) as dias_vencidos')
-            )
+        // ==========================
+        // YA CADUCADOS (antes de hoy)
+        // ==========================
+        $caducados = (clone $base)
+            ->whereDate('l.fecha_caducidad', '<', $hoy)
+            ->addSelect(DB::raw("DATEDIFF('{$hoy}', l.fecha_caducidad) as dias_vencidos"))
+            ->orderBy('l.fecha_caducidad', 'asc')
             ->paginate(10, ['*'], 'caducados_page');
 
-        return view('reportes.caducidad', compact('proximos', 'caducados', 'dias'));
+        return view('reportes.caducidad', compact(
+            'dias',
+            'proximos',
+            'caducados',
+            'desde',
+            'hasta'
+        ));
     }
 
     // ===================== STOCK BAJO =====================

@@ -140,7 +140,17 @@ Route::middleware(['auth', 'estado', 'role:Vendedor,Administrador,Superadmin'])-
     Route::get('/detalleventa', [DetalleVentaController::class, 'index'])->name('detalleventa.index');
     Route::get('/venta/{venta}', [VentaController::class, 'detalles'])->name('venta.detalles');
     Route::delete('/venta/anular/{venta}', [VentaController::class, 'anular'])->name('venta.anular');
-    Route::get('/venta/ticket/{venta}', [VentaController::class, 'ticket'])->name('venta.ticket');
+    // Vista HTML del ticket (para el modal)
+    Route::get('/venta/{venta}/ticket', [VentaController::class, 'ticketHtml'])
+        ->name('venta.ticket.html');
+
+// PDF del ticket (para descarga / impresión directa)
+    Route::get('/venta/{venta}/ticket-pdf', [VentaController::class, 'ticketPdf'])
+        ->name('venta.ticket.pdf');
+
+    // 🔹 Sincronizar carrito antes de recargar filtros
+    Route::post('/venta/sync-carrito', [VentaController::class, 'syncCarrito'])
+        ->name('venta.syncCarrito');
 
     // Dashboard vendedor
     Route::view('/dashboard/vendedor', 'vendedor.dashboard')->name('vendedor.dashboard');

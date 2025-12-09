@@ -102,8 +102,48 @@ class LoteController extends Controller
         }
         // ==================================================================================================
 
-        // Productos para los modales
-        $productos = Producto::orderBy('nombre_comercial')->get();
+        // Productos para los modales (con resumen concatenado)
+        $productos = Producto::with([
+            'formaFarmaceutica',
+            'asignaComponentes.componente',
+            'asignaComponentes.fuerzaUnidad',
+            'asignaComponentes.baseUnidad',
+        ])
+            ->orderBy('nombre_comercial')
+            ->get();
+
+// Construir resumen para cada producto (para usar en los selects)
+        foreach ($productos as $producto) {
+            // Componentes tipo: "Paracetamol 500 mg / 1 tableta, Cafeína 65 mg / 1 tableta"
+            $componentesTxt = $producto->asignaComponentes
+                ->map(function ($a) {
+                    $fuerza = rtrim(rtrim(number_format($a->fuerza_cantidad, 2, '.', ''), '0'), '.');
+                    $base   = rtrim(rtrim(number_format($a->base_cantidad, 2, '.', ''), '0'), '.');
+                    $fu     = $a->fuerzaUnidad->nombre ?? '';
+                    $bu     = $a->baseUnidad->nombre ?? '';
+                    $comp   = $a->componente->nombre ?? '';
+
+                    return trim($comp.' '.trim($fuerza.' '.($fu ?: '')).' / '.trim($base.' '.($bu ?: '')));
+                })
+                ->filter()
+                ->implode(', ');
+
+            $componentesTxt = $componentesTxt ? ' '.$componentesTxt : '';
+
+            $nombre      = trim($producto->nombre_comercial ?? '');
+            $descripcion = trim($producto->descripcion ?? '');
+            $contenido   = trim($producto->contenido ?? '');
+            $forma       = trim($producto->formaFarmaceutica->nombre ?? '');
+
+            $partes = array_filter([
+                $nombre,
+                $descripcion ?: null,
+                $contenido   ?: null,
+                $forma       ?: null,
+            ]);
+
+            $producto->resumen = trim(implode(' ', $partes).$componentesTxt);
+        }
 
         // PROMOCIONES POR LOTE
         $promosPorLote = AsignaPromocion::with('promocion')
@@ -182,23 +222,27 @@ class LoteController extends Controller
                 'date_format:d-m-Y',
                 function ($attribute, $value, $fail) {
                     $fecha = Carbon::createFromFormat('d-m-Y', $value);
+
+                    // Si quieres seguir prohibiendo fechas pasadas:
                     if ($fecha->isPast()) {
                         $fail('La fecha de caducidad no puede estar en el pasado.');
                     }
                 }
             ],
-            'precio_compra'   => 'required|numeric|min:0.01',
-            'cantidad'        => 'required|integer|min:1',
+            // 👇 OJO: ya NO exigimos precio_compra ni cantidad
         ]);
 
+        // Convertir a formato Y-m-d para guardar en la BD
         $validated['fecha_caducidad'] = Carbon::createFromFormat('d-m-Y', $validated['fecha_caducidad'])
             ->format('Y-m-d');
 
+        // Solo se actualizan producto_id, codigo y fecha_caducidad
         $lote->update($validated);
 
         return redirect()->route('lote.index')
             ->with('success', 'Lote actualizado correctamente.');
     }
+
 
     public function destroy($id)
     {

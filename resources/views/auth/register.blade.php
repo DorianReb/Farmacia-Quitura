@@ -24,7 +24,7 @@
                 <div class="modal-body">
                     {{-- Nombre --}}
                     <div class="mb-3">
-                        <label for="reg_nombre" class="form-label fw-semibold">*Nombre</label>
+                        <label for="reg_nombre" class="form-label fw-semibold"><span class="text-danger">*</span>Nombre</label>
                         <input
                             id="reg_nombre"
                             type="text"
@@ -38,7 +38,7 @@
 
                     {{-- Apellido paterno --}}
                     <div class="mb-3">
-                        <label for="reg_apellido_paterno" class="form-label fw-semibold">*Apellido paterno</label>
+                        <label for="reg_apellido_paterno" class="form-label fw-semibold"><span class="text-danger">*</span>Apellido paterno</label>
                         <input
                             id="reg_apellido_paterno"
                             type="text"
@@ -52,7 +52,7 @@
 
                     {{-- Apellido materno --}}
                     <div class="mb-3">
-                        <label for="reg_apellido_materno" class="form-label fw-semibold">*Apellido materno</label>
+                        <label for="reg_apellido_materno" class="form-label fw-semibold"><span class="text-danger">*</span>Apellido materno</label>
                         <input
                             id="reg_apellido_materno"
                             type="text"
@@ -69,7 +69,7 @@
 
                     {{-- Correo --}}
                     <div class="mb-3">
-                        <label for="reg_correo" class="form-label fw-semibold">*Correo electrónico</label>
+                        <label for="reg_correo" class="form-label fw-semibold"><span class="text-danger">*</span>Correo electrónico</label>
                         <input
                             id="reg_correo"
                             type="email"
@@ -84,7 +84,7 @@
 
                     {{-- Contraseña --}}
                     <div class="mb-3">
-                        <label for="reg_contrasena" class="form-label fw-semibold">*Contraseña</label>
+                        <label for="reg_contrasena" class="form-label fw-semibold"><span class="text-danger">*</span>Contraseña</label>
                         <input
                             id="reg_contrasena"
                             type="password"
@@ -98,7 +98,7 @@
 
                     {{-- Confirmación --}}
                     <div class="mb-2">
-                        <label for="reg_contrasena_confirmation" class="form-label fw-semibold">*Confirmar contraseña</label>
+                        <label for="reg_contrasena_confirmation" class="form-label fw-semibold"><span class="text-danger">*</span>Confirmar contraseña</label>
                         <input
                             id="reg_contrasena_confirmation"
                             type="password"

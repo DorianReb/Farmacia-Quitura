@@ -119,18 +119,23 @@ class AsignaComponenteController extends Controller
             'base_unidad_id'       => ['required','exists:unidades_medida,id'],
         ]);
 
+        // 👇 página desde el formulario (o 1 por defecto)
+        $page = (int) $request->input('page', 1);
+
         $existe = AsignaComponente::where('producto_id', $data['producto_id'])
             ->where('nombre_cientifico_id', $data['nombre_cientifico_id'])
             ->exists();
 
         if ($existe) {
-            return back()->withInput()
+            return back()
+                ->withInput()
                 ->withErrors(['nombre_cientifico_id' => 'Este componente ya está asignado a ese producto.']);
         }
 
         AsignaComponente::create($data);
 
-        return redirect()->route('producto.index')
+        return redirect()
+            ->route('producto.index', ['page' => $page])
             ->with('success', 'Componente asignado correctamente.');
     }
 
@@ -181,19 +186,24 @@ class AsignaComponenteController extends Controller
             'base_unidad_id'       => ['required','exists:unidades_medida,id'],
         ]);
 
+        // 👇 página desde el formulario (o 1 por defecto)
+        $page = (int) $request->input('page', 1);
+
         $existe = AsignaComponente::where('producto_id', $data['producto_id'])
             ->where('nombre_cientifico_id', $data['nombre_cientifico_id'])
             ->where('id', '<>', $asignacion->id)
             ->exists();
 
         if ($existe) {
-            return back()->withInput()
+            return back()
+                ->withInput()
                 ->withErrors(['nombre_cientifico_id' => 'Este componente ya está asignado a ese producto.']);
         }
 
         $asignacion->update($data);
 
-        return redirect()->route('producto.index')
+        return redirect()
+            ->route('producto.index', ['page' => $page])
             ->with('success', 'Asignación actualizada correctamente.');
     }
 
@@ -201,12 +211,17 @@ class AsignaComponenteController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $asignacion = AsignaComponente::findOrFail($id);
+
+        // 👇 página desde el formulario (o 1 por defecto)
+        $page = (int) $request->input('page', 1);
+
         $asignacion->delete();
 
-        return redirect()->route('producto.index')
+        return redirect()
+            ->route('producto.index', ['page' => $page])
             ->with('success', 'Asignación eliminada.');
     }
 }

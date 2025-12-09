@@ -21,6 +21,16 @@
             align-items: center;
             justify-content: center;
         }
+
+        /* 👇 Igual que en productos.index */
+        .col-resumen{
+            max-width:520px;
+            white-space:normal;
+            word-break:break-word;
+        }
+        @media (max-width: 1400px){
+            .col-resumen{ max-width:420px; }
+        }
     </style>
 
     @php
@@ -86,8 +96,8 @@
         {{-- TABLA DE LOTES --}}
         <div class="card card-soft">
             <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle m-0">
+                <div class="table-responsive" style="max-width: 100vw; overflow-x: auto; scrollbar-width: thin; scrollbar-color: #c7d2fe transparent;">
+                    <table class="table table-hover align-middle m-0" style="min-width: 1100px; font-size: 0.95rem;">
                         <thead class="bg-azul-marino text-white">
                         <tr>
                             <th>Código</th>

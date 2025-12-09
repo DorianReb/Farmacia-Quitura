@@ -43,7 +43,7 @@
 
                     {{-- Correo --}}
                     <div class="mb-4">
-                        <label for="correo" class="form-label fw-semibold">*Correo electrónico</label>
+                        <label for="correo" class="form-label fw-semibold"><span class="text-danger">*</span>Correo electrónico</label>
                         <input
                             id="correo"
                             type="email"
@@ -62,7 +62,7 @@
 
                     {{-- Contraseña --}}
                     <div class="mb-4">
-                        <label for="contrasena" class="form-label fw-semibold">*Contraseña</label>
+                        <label for="contrasena" class="form-label fw-semibold"><span class="text-danger">*</span>Contraseña</label>
 
                         <div class="position-relative">
                             <input
@@ -89,7 +89,6 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-
 
 
                     {{-- Botón iniciar sesión --}}
@@ -142,7 +141,7 @@
                 <div class="modal-body">
                     {{-- Nombre --}}
                     <div class="mb-3">
-                        <label for="reg_nombre" class="form-label fw-semibold">*Nombre</label>
+                        <label for="reg_nombre" class="form-label fw-semibold"><span class="text-danger">*</span>Nombre</label>
                         <input id="reg_nombre" type="text" name="nombre"
                                class="form-control @error('nombre') is-invalid @enderror"
                                value="{{ old('nombre') }}" required>
@@ -151,7 +150,7 @@
 
                     {{-- Apellido paterno --}}
                     <div class="mb-3">
-                        <label for="reg_apellido_paterno" class="form-label fw-semibold">*Apellido paterno</label>
+                        <label for="reg_apellido_paterno" class="form-label fw-semibold"><span class="text-danger">*</span>Apellido paterno</label>
                         <input id="reg_apellido_paterno" type="text" name="apellido_paterno"
                                class="form-control @error('apellido_paterno') is-invalid @enderror"
                                value="{{ old('apellido_paterno') }}" required>
@@ -160,7 +159,7 @@
 
                     {{-- Apellido materno (opcional) --}}
                     <div class="mb-3">
-                        <label for="reg_apellido_materno" class="form-label fw-semibold">*Apellido materno</label>
+                        <label for="reg_apellido_materno" class="form-label fw-semibold"><span class="text-danger">*</span>Apellido materno</label>
                         <input id="reg_apellido_materno" type="text" name="apellido_materno"
                                class="form-control @error('apellido_materno') is-invalid @enderror"
                                value="{{ old('apellido_materno') }}" required>
@@ -169,7 +168,7 @@
 
                     {{-- Correo --}}
                     <div class="mb-3">
-                        <label for="reg_correo" class="form-label fw-semibold">*Correo electrónico</label>
+                        <label for="reg_correo" class="form-label fw-semibold"><span class="text-danger">*</span>Correo electrónico</label>
                         <input id="reg_correo" type="email" name="correo"
                                class="form-control @error('correo') is-invalid @enderror"
                                value="{{ old('correo') }}" required autocomplete="username">
@@ -178,7 +177,7 @@
 
                     {{-- Rol --}}
                     <div class="mb-3">
-                        <label for="reg_rol" class="form-label fw-semibold">*Rol</label>
+                        <label for="reg_rol" class="form-label fw-semibold"><span class="text-danger">*</span>Rol</label>
                         <select id="reg_rol" name="rol"
                                 class="form-select @error('rol') is-invalid @enderror" required>
                             <option value="" disabled {{ old('rol') ? '' : 'selected' }}>Selecciona un rol</option>
@@ -190,7 +189,9 @@
 
                     {{-- Contraseña --}}
                     <div class="mb-3">
-                        <label for="reg_contrasena" class="form-label fw-semibold">*Contraseña</label>
+                        <label for="reg_contrasena" class="form-label fw-semibold">
+                            <span class="text-danger">*</span>Contraseña
+                        </label>
                         <input id="reg_contrasena" type="password" name="contrasena"
                                class="form-control @error('contrasena') is-invalid @enderror"
                                required autocomplete="new-password">
@@ -199,11 +200,12 @@
 
                     {{-- Confirmación --}}
                     <div class="mb-2">
-                        <label for="reg_contrasena_confirmation" class="form-label fw-semibold">*Confirmar contraseña</label>
+                        <label for="reg_contrasena_confirmation" class="form-label fw-semibold">
+                            <span class="text-danger">*</span>Confirmar contraseña
+                        </label>
                         <input id="reg_contrasena_confirmation" type="password" name="contrasena_confirmation"
                                class="form-control" required autocomplete="new-password">
                     </div>
-                </div>
 
                 <div class="modal-footer">
                     <button type="submit" class="btn btn-success">

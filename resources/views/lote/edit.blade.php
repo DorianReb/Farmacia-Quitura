@@ -12,16 +12,21 @@
 
             <div class="modal-body">
                 {{-- Mensaje de errores --}}
-                @if ($errors->any() && session('from_modal') === 'edit_lote' && session('edit_id') == $lote->id)
-                    <div class="alert alert-danger">
-                        <strong>Revisa los campos:</strong>
-                        <ul class="mb-0">
-                            @foreach ($errors->all() as $error)
-                                <li>{{ $error }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
+                @php
+                    $fromModal = old('from_modal') ?? session('from_modal');
+                    $editId    = old('edit_id') ?? session('edit_id');
+                @endphp
+
+
+                @if ($errors->any() && $fromModal === 'edit_lote' && (int)$editId === (int)$lote->id)
+                    <script>
+                        document.addEventListener('DOMContentLoaded', () => {
+                            const el = document.getElementById('editModal{{ $lote->id }}');
+                            if (el) new bootstrap.Modal(el).show();
+                        });
+                    </script>
                 @endif
+
 
                 <form action="{{ route('lote.update', $lote->id) }}" method="POST" autocomplete="off">
                     @csrf
@@ -36,7 +41,7 @@
                             <option value="">Selecciona un producto...</option>
                             @foreach ($productos as $producto)
                                 <option value="{{ $producto->id }}" {{ old('producto_id', $lote->producto_id) == $producto->id ? 'selected' : '' }}>
-                                    {{ $producto->nombre_comercial }}
+                                    {{ $producto->resumen ?? $producto->nombre_comercial }}
                                 </option>
                             @endforeach
                         </select>

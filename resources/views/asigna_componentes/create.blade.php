@@ -22,6 +22,7 @@
                 <form action="{{ route('asigna_componentes.store') }}" method="POST" autocomplete="off" class="row g-3">
                     @csrf
                     <input type="hidden" name="from_modal" value="create_asigna_componente">
+                    <input type="hidden" name="page" value="{{ request('page', 1) }}">
 
                     {{-- Producto (nombre comercial) --}}
                     <div class="col-12 col-md-6">
@@ -56,7 +57,7 @@
                     {{-- Fuerza --}}
                     <div class="col-6 col-md-3">
                         <label for="fuerza_cantidad_create" class="form-label">Fuerza (cantidad) <span class="text-danger">*</span></label>
-                        <input type="number" step="0.01" min="0"
+                        <input type="number" step="0.001" min="0"
                                class="form-control @error('fuerza_cantidad') is-invalid @enderror"
                                id="fuerza_cantidad_create" name="fuerza_cantidad"
                                value="{{ old('fuerza_cantidad') }}" placeholder="Ej. 500" required>
@@ -79,7 +80,7 @@
                     {{-- Base --}}
                     <div class="col-6 col-md-3">
                         <label for="base_cantidad_create" class="form-label">Base (cantidad) <span class="text-danger">*</span></label>
-                        <input type="number" step="0.01" min="0"
+                        <input type="number" step="0.001" min="0"
                                class="form-control @error('base_cantidad') is-invalid @enderror"
                                id="base_cantidad_create" name="base_cantidad"
                                value="{{ old('base_cantidad') }}" placeholder="Ej. 5" required>

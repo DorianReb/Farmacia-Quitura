@@ -12,10 +12,12 @@ class Venta extends Model
     protected $table = 'ventas';
     protected $primaryKey = 'id';
     public $timestamps = true;
-    protected $fillable=[
-      'usuario_id',
-      'fecha',
-      'total'
+    protected $fillable = [
+        'usuario_id',
+        'fecha',
+        'total',
+        'monto_recibido',
+        'cambio',
     ];
 
     public function usuario()
